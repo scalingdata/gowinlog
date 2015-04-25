@@ -3,20 +3,73 @@
 #include "evt.h"
 #include "_cgo_export.h"
 
+void freeLog(PVOID buf) {
+    printf("Freeing %lu\n", buf);
+    free(buf);
+}
+
+PVOID mallocLog(size_t len) {
+    PVOID buf = malloc(len);
+    printf("malloc %lu (%lu)\n", buf, len);
+    return buf;
+}
+
 // Extract an array of all the attributes specified in the context
-// Allocates a buffer to hold the attributes and puts it in *pRenderedValues
-int RenderEventValues(EVT_HANDLE hContext, EVT_HANDLE hEvent, PVOID* pRenderedValues, int* pdwUsed, int* pdwPropertyCount) {
+// Allocates a buffer to hold the attributes and points *pRenderedValues at it
+PVOID RenderEventValues(EVT_HANDLE hContext, EVT_HANDLE hEvent) {
   DWORD dwBufferSize = 0;
-  EvtRender(hContext, hEvent, EvtRenderEventValues, dwBufferSize, *pRenderedValues, (PDWORD)pdwUsed, (PDWORD)pdwPropertyCount);
-  *(char**)pRenderedValues = malloc(*pdwUsed);
-  if (*(char**)pRenderedValues == 0) {
-    return -1;
+  DWORD dwUsed = 0;
+  DWORD dwPropertyCount = 0;
+  EvtRender(hContext, hEvent, EvtRenderEventValues, dwBufferSize, NULL, &dwUsed, &dwPropertyCount);
+  PVOID pRenderedValues = mallocLog(dwUsed);
+  if (!pRenderedValues) {
+      return NULL;
   }
-  dwBufferSize = *pdwUsed;
-  if (! EvtRender(hContext, hEvent, EvtRenderEventValues, dwBufferSize, *pRenderedValues, (PDWORD)pdwUsed, (PDWORD)pdwPropertyCount)){
-    return GetLastError();
+  dwBufferSize = dwUsed;
+  if (! EvtRender(hContext, hEvent, EvtRenderEventValues, dwBufferSize, pRenderedValues, &dwUsed, &dwPropertyCount)){
+  	  free(pRenderedValues);
+      return NULL;
   }
-  return 0;
+  return pRenderedValues;
+}
+
+char* GetFormattedMessage(EVT_HANDLE hEventPublisher, EVT_HANDLE hEvent, int format) {
+   DWORD dwBufferSize = 0;
+   DWORD dwBufferUsed = 0;
+   int status;
+   errno_t decodeReturn = EvtFormatMessage(hEventPublisher, hEvent, 0, 0, NULL, format, 0, NULL, &dwBufferUsed);
+   if ((status = GetLastError()) != ERROR_INSUFFICIENT_BUFFER) {
+       return NULL;
+   }
+   LPWSTR messageWide = mallocLog(dwBufferUsed);
+   if (!messageWide) {
+       return NULL;
+   }
+   dwBufferSize = dwBufferUsed;
+   decodeReturn = EvtFormatMessage(hEventPublisher, hEvent, 0, 0, NULL, format, dwBufferSize, messageWide, &dwBufferUsed);
+   if (!decodeReturn) {
+       freeLog(messageWide);
+       return NULL;
+   }
+   size_t lenMessage = wcstombs(NULL, messageWide, 0);
+   printf("Got formatted message %lu %lu\n", dwBufferUsed, lenMessage);
+   wprintf(messageWide);
+   printf("\n");
+   void* message = malloc(lenMessage);
+   printf("Copying\n");
+   if (!message) {
+   	   printf("Malloc failed\n");
+       freeLog(messageWide);
+       return NULL;
+   }
+   wcstombs(message, messageWide, lenMessage);
+   freeLog(messageWide);
+   return message;
+}
+
+EVT_HANDLE GetEventPublisherHandle(PVOID pRenderedValues) { 
+   LPCWSTR publisher = ((PEVT_VARIANT)pRenderedValues)[EvtSystemProviderName].StringVal;
+   return EvtOpenPublisherMetadata(NULL, publisher, NULL, 0, 0);
 }
 
 // Create a render context that extracts all the System attributes
@@ -30,12 +83,17 @@ int GetRenderedValueType(PVOID pRenderedValues, int property) {
 }
 
 // Get the String value of the rendered attribute at the given index
+// Allocates a string to put the property in
 char* GetRenderedStringValue(PVOID pRenderedValues, int property) {
   wchar_t const * propVal = ((PEVT_VARIANT)pRenderedValues)[property].StringVal;
-  size_t lenNarrowPropVal = wcslen(propVal);
-  char* narrowPropVal = malloc(lenNarrowPropVal);
-  wcstombs(narrowPropVal, propVal, lenNarrowPropVal);
-  return narrowPropVal;
+  size_t lenNarrowPropVal = wcstombs(NULL, propVal, 0) + 1;
+  char* value = mallocLog(lenNarrowPropVal);
+  printf("RFS %lu\n", value);
+  if (!value) {
+      return NULL;
+  }
+  wcstombs(value, propVal, lenNarrowPropVal);
+  return value;
 }
 
 // Dispatch events and errors appropriately
@@ -67,18 +125,21 @@ int setupListener(char* channel, size_t channelLen, PVOID pWatcher)
     DWORD status = ERROR_SUCCESS;
     EVT_HANDLE hSubscription = NULL;
     size_t wideChannelLen;
-    size_t maxWideChannelLen = channelLen * 2;
-    LPWSTR lChannel = malloc(maxWideChannelLen);
+    size_t maxWideChannelLen = mbstowcs(NULL, channel, 0);
+    LPWSTR lChannel = mallocLog(maxWideChannelLen);
+    if (!lChannel) {
+    	return 1;
+    }
 
     // Convert Go string to wide characters
-    mbstowcs_s(&wideChannelLen, lChannel, maxWideChannelLen, channel, maxWideChannelLen);
+    mbstowcs(lChannel, channel, maxWideChannelLen);
 
     // Subscribe to events beginning in the present. All future events will trigger the callback.
     hSubscription = EvtSubscribe(NULL, NULL, lChannel, NULL, NULL, pWatcher, (EVT_SUBSCRIBE_CALLBACK)SubscriptionCallback, EvtSubscribeToFutureEvents);
-    free(lChannel);
+    freeLog(lChannel);
     if (NULL == hSubscription)
     {   
-        return GetLastError();
+        return 2;
     }
     return 0;
 }

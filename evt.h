@@ -4,7 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 int setupListener(char* channel, size_t channelLen, PVOID pWatcher);
-int RenderEventValues(PVOID hContext, PVOID hEvent, PVOID* pRenderedValues, int* pdwUsed, int* pdwPropertyCount);
+PVOID RenderEventValues(PVOID hContext, PVOID hEvent);
 int GetRenderedValueType(PVOID pRenderedValues, int property);
 char* GetRenderedStringValue(PVOID pRenderedValues, int property);
+char* GetFormattedMessage(PVOID hEventPublisher, PVOID hEvent, int format);
+PVOID GetEventPublisherHandle(PVOID pRenderedValues);
 PVOID CreateSystemRenderContext();
+
+void freeLog(PVOID);
