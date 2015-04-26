@@ -3,17 +3,6 @@
 #include "evt.h"
 #include "_cgo_export.h"
 
-void freeLog(PVOID buf) {
-    printf("Freeing %lu\n", buf);
-    free(buf);
-}
-
-PVOID mallocLog(size_t len) {
-    PVOID buf = malloc(len);
-    printf("malloc %lu (%lu)\n", buf, len);
-    return buf;
-}
-
 // Extract an array of all the attributes specified in the context
 // Allocates a buffer to hold the attributes and points *pRenderedValues at it
 PVOID RenderEventValues(EVT_HANDLE hContext, EVT_HANDLE hEvent) {
@@ -21,7 +10,7 @@ PVOID RenderEventValues(EVT_HANDLE hContext, EVT_HANDLE hEvent) {
   DWORD dwUsed = 0;
   DWORD dwPropertyCount = 0;
   EvtRender(hContext, hEvent, EvtRenderEventValues, dwBufferSize, NULL, &dwUsed, &dwPropertyCount);
-  PVOID pRenderedValues = mallocLog(dwUsed);
+  PVOID pRenderedValues = malloc(dwUsed);
   if (!pRenderedValues) {
       return NULL;
   }
@@ -41,29 +30,24 @@ char* GetFormattedMessage(EVT_HANDLE hEventPublisher, EVT_HANDLE hEvent, int for
    if ((status = GetLastError()) != ERROR_INSUFFICIENT_BUFFER) {
        return NULL;
    }
-   LPWSTR messageWide = mallocLog(dwBufferUsed);
+   dwBufferSize = dwBufferUsed + 1;
+   LPWSTR messageWide = malloc((dwBufferSize) * sizeof(wchar_t));
    if (!messageWide) {
        return NULL;
    }
-   dwBufferSize = dwBufferUsed;
    decodeReturn = EvtFormatMessage(hEventPublisher, hEvent, 0, 0, NULL, format, dwBufferSize, messageWide, &dwBufferUsed);
    if (!decodeReturn) {
-       freeLog(messageWide);
+       free(messageWide);
        return NULL;
    }
-   size_t lenMessage = wcstombs(NULL, messageWide, 0);
-   printf("Got formatted message %lu %lu\n", dwBufferUsed, lenMessage);
-   wprintf(messageWide);
-   printf("\n");
+   size_t lenMessage = wcstombs(NULL, messageWide, 0) + 1;
    void* message = malloc(lenMessage);
-   printf("Copying\n");
    if (!message) {
-   	   printf("Malloc failed\n");
-       freeLog(messageWide);
+       free(messageWide);
        return NULL;
    }
    wcstombs(message, messageWide, lenMessage);
-   freeLog(messageWide);
+   free(messageWide);
    return message;
 }
 
@@ -87,8 +71,7 @@ int GetRenderedValueType(PVOID pRenderedValues, int property) {
 char* GetRenderedStringValue(PVOID pRenderedValues, int property) {
   wchar_t const * propVal = ((PEVT_VARIANT)pRenderedValues)[property].StringVal;
   size_t lenNarrowPropVal = wcstombs(NULL, propVal, 0) + 1;
-  char* value = mallocLog(lenNarrowPropVal);
-  printf("RFS %lu\n", value);
+  char* value = malloc(lenNarrowPropVal);
   if (!value) {
       return NULL;
   }
@@ -126,7 +109,7 @@ int setupListener(char* channel, size_t channelLen, PVOID pWatcher)
     EVT_HANDLE hSubscription = NULL;
     size_t wideChannelLen;
     size_t maxWideChannelLen = mbstowcs(NULL, channel, 0);
-    LPWSTR lChannel = mallocLog(maxWideChannelLen);
+    LPWSTR lChannel = malloc(maxWideChannelLen * sizeof(wchar_t));
     if (!lChannel) {
     	return 1;
     }
@@ -136,7 +119,7 @@ int setupListener(char* channel, size_t channelLen, PVOID pWatcher)
 
     // Subscribe to events beginning in the present. All future events will trigger the callback.
     hSubscription = EvtSubscribe(NULL, NULL, lChannel, NULL, NULL, pWatcher, (EVT_SUBSCRIBE_CALLBACK)SubscriptionCallback, EvtSubscribeToFutureEvents);
-    freeLog(lChannel);
+    free(lChannel);
     if (NULL == hSubscription)
     {   
         return 2;

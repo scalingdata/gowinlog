@@ -101,71 +101,48 @@ func getError(err C.int) error {
 func renderStringField(fields C.PVOID, fieldIndex int) (string, bool, error) {
   fieldType := C.GetRenderedValueType(fields, C.int(fieldIndex))
   if fieldType != EvtVarTypeString {
-  	fmt.Printf("Not string type\n")
     return "", false, nil
   }
 
   cString := C.GetRenderedStringValue(fields, C.int(fieldIndex))
-  fmt.Printf("rsf Got: %v\n", cString)
   if cString == nil {
-  	fmt.Printf("Error\n")
   	return "", false, nil
   }
   value := C.GoString(cString)
-  C.freeLog(C.PVOID(cString))
+  C.free(unsafe.Pointer(cString))
   return value, true, nil
 }
 
 func formatMessage(eventPublisherHandle, eventHandle C.PVOID, format int) (string, error) {
   cString := C.GetFormattedMessage(eventPublisherHandle, eventHandle, C.int(format))
-  fmt.Printf("fm Got: %v\n", cString)
   if cString == nil {
   	return "", fmt.Errorf("Null message")
   }
   value := C.GoString(cString)
-  C.freeLog(C.PVOID(cString))
+  C.free(unsafe.Pointer(cString))
   return value, nil
 }
 
 func (self *WinLogWatcher) eventCallback(handle C.HANDLE) {
   renderedFields := C.RenderEventValues(C.PVOID(self.renderContext), C.PVOID(handle))
-  fmt.Printf("Rendered fields got: %v\n", renderedFields)
   if renderedFields == nil {
-      fmt.Printf("Error while getting fields")
       return
   }
   
   publisherHandle := C.GetEventPublisherHandle(C.PVOID(renderedFields))
-  fmt.Printf("Publisher handler %v\n", publisherHandle)
-/*
   computerName, _, _ := renderStringField(C.PVOID(renderedFields), EvtSystemComputer)
-  fmt.Printf("computerName: %v\n", computerName)
-
   providerName, _, _ := renderStringField(C.PVOID(renderedFields), EvtSystemProviderName)
-  fmt.Printf("Provider: %v, computerName: %v\n", providerName, computerName)
-
   channel, _, _ := renderStringField(C.PVOID(renderedFields), EvtSystemChannel)
-  fmt.Printf("Provider: %v, channel: %v, computerName: %v\n", providerName, channel, computerName)
-
   msgText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageEvent)
-  fmt.Printf("Provider: %v, channel: %v, computerName: %v, msg: %v\n", providerName, channel, computerName, msgText)
-
-  //lvlText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageLevel)
-  //taskText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageTask)
+  lvlText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageLevel)
+  taskText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageTask)
   providerText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageProvider)
-  fmt.Printf("Provider: %v, channel: %v, computerName: %v, msg: %v, providerText: %v \n", providerName, channel, computerName, msgText, providerText)
-
   opcodeText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageOpcode)
-  fmt.Printf("Provider: %v, channel: %v, computerName: %v, msg: %v, opcodeText: %v, providerText: %v \n", providerName, channel, computerName, msgText, opcodeText, providerText)
-
   channelText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageChannel)
   
+  fmt.Printf("Provider: %v, channel: %v, computerName: %v, msg: %v, channelText: %v, opcodeText: %v, level: %v, task: %v, providerText: %v \n", providerName, channel, computerName, msgText, channelText, opcodeText, lvlText, taskText, providerText)
 
-  fmt.Printf("Provider: %v, channel: %v, computerName: %v, msg: %v, channelText: %v, opcodeText: %v, providerText: %v \n", providerName, channel, computerName, msgText, channelText, opcodeText, providerText)
-  */
-  msgText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageEvent);
-  fmt.Printf("Msg: %v\n", msgText);
-  C.freeLog(C.PVOID(renderedFields))
+  C.free(unsafe.Pointer(renderedFields))
 }
 
 func (self *WinLogWatcher) errorCallback(handle C.HANDLE) {
