@@ -6,7 +6,7 @@ Usage
 
 In Go, create a watcher and subscribe to some log channels. Events and errors are coerced into Go structs and published on the `Event()` and `Error()` channels. Every channel maintains a bookmark which can be stored and used to resume processing at the last message. 
 
-```
+``` Go
 package main
 
 import (
