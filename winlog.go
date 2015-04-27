@@ -3,7 +3,6 @@ package winlog
 import (
   "fmt"
   "time"
-  "unsafe"
 )
 
 type WinLogEvent struct {
@@ -34,12 +33,12 @@ type WinLogWatcher struct {
   errChan chan error
   eventChan chan *WinLogEvent
 
-  renderContext unsafe.Pointer
+  renderContext uint64
 }
 
 func NewWinLogWatcher() (*WinLogWatcher, error) {
   cHandle := getSystemRenderContext()
-  if cHandle == nil {
+  if cHandle == 0 {
     return nil, fmt.Errorf("Error getting render context %v", cHandle)
   }
   return &WinLogWatcher {

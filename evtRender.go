@@ -83,8 +83,8 @@ func setupListener(channel string, watcher *WinLogWatcher) {
   C.free(unsafe.Pointer(cChan))
 }
 
-func getSystemRenderContext() unsafe.Pointer {
-	return unsafe.Pointer(C.CreateSystemRenderContext())
+func getSystemRenderContext() uint64 {
+	return uint64(C.CreateSystemRenderContext())
 }
 
 func getError(err C.int) error {
@@ -120,12 +120,12 @@ func renderFileTimeField(fields C.PVOID, fieldIndex int) (time.Time, bool, error
     return time.Time{}, false, nil
   }
   field := C.GetRenderedFileTimeValue(fields, C.int(fieldIndex))
-  //fmt.Printf("Time: %v\n", int(field))
-  return time.Date(1601, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(100 * field) * time.Nanosecond), true, nil
+  fmt.Printf("Time: %v\n", int(field))
+  return time.Unix(int64(field), 0), true, nil
 }
 
 func renderUIntField(fields C.PVOID, fieldIndex int) (uint, bool, error) {
-  var field C.ulong
+  var field C.ULONGLONG
   fieldType := C.GetRenderedValueType(fields, C.int(fieldIndex))
   switch fieldType {
   case EvtVarTypeByte:
@@ -144,7 +144,7 @@ func renderUIntField(fields C.PVOID, fieldIndex int) (uint, bool, error) {
 }
 
 func renderIntField(fields C.PVOID, fieldIndex int) (int, bool, error) {
-  var field C.long
+  var field C.LONGLONG
   fieldType := C.GetRenderedValueType(fields, C.int(fieldIndex))
   switch fieldType {
   case EvtVarTypeByte:
@@ -162,7 +162,7 @@ func renderIntField(fields C.PVOID, fieldIndex int) (int, bool, error) {
   return int(field), true, nil
 }
 
-func formatMessage(eventPublisherHandle, eventHandle C.PVOID, format int) (string, error) {
+func formatMessage(eventPublisherHandle, eventHandle C.ULONGLONG, format int) (string, error) {
   cString := C.GetFormattedMessage(eventPublisherHandle, eventHandle, C.int(format))
   if cString == nil {
   	return "", fmt.Errorf("Null message")
@@ -172,8 +172,8 @@ func formatMessage(eventPublisherHandle, eventHandle C.PVOID, format int) (strin
   return value, nil
 }
 
-func (self *WinLogWatcher) eventCallback(handle C.HANDLE) {
-  renderedFields := C.RenderEventValues(C.PVOID(self.renderContext), C.PVOID(handle))
+func (self *WinLogWatcher) eventCallback(handle C.ULONGLONG) {
+  renderedFields := C.RenderEventValues(C.ULONGLONG(self.renderContext), handle)
   if renderedFields == nil {
       return
   }
@@ -192,12 +192,12 @@ func (self *WinLogWatcher) eventCallback(handle C.HANDLE) {
   threadId, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemThreadID)
   version, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemVersion)
   created, _, _ := renderFileTimeField(C.PVOID(renderedFields), EvtSystemTimeCreated)
-  msgText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageEvent)
-  lvlText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageLevel)
-  taskText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageTask)
-  providerText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageProvider)
-  opcodeText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageOpcode)
-  channelText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageChannel)
+  msgText, _ := formatMessage(publisherHandle, handle, EvtFormatMessageEvent)
+  lvlText, _ := formatMessage(publisherHandle, handle, EvtFormatMessageLevel)
+  taskText, _ := formatMessage(publisherHandle, handle, EvtFormatMessageTask)
+  providerText, _ := formatMessage(publisherHandle, handle, EvtFormatMessageProvider)
+  opcodeText, _ := formatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
+  channelText, _ := formatMessage(publisherHandle, handle, EvtFormatMessageChannel)
   
   C.free(unsafe.Pointer(renderedFields))
   event := WinLogEvent {
@@ -225,21 +225,21 @@ func (self *WinLogWatcher) eventCallback(handle C.HANDLE) {
   fmt.Printf("EvenT: %v\n", event)
 }
 
-func (self *WinLogWatcher) errorCallback(handle C.HANDLE) {
-  fmt.Printf("Got error %v\n", uintptr(handle));
+func (self *WinLogWatcher) errorCallback(handle C.ULONGLONG) {
+  fmt.Printf("Got error %v\n", handle);
 }
 
 /* These are entry points for the callback to hand the pointer to Go-land.
    Note: handles are only valid within the callback. Don't pass them out. */
 
 //export EventCallbackError
-func EventCallbackError(handle C.HANDLE, logWatcher unsafe.Pointer) {
+func EventCallbackError(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
   watcher := (*WinLogWatcher)(logWatcher)
   watcher.errorCallback(handle)
 }
 
 //export EventCallback
-func EventCallback(handle C.HANDLE, logWatcher unsafe.Pointer) {
+func EventCallback(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
   watcher := (*WinLogWatcher)(logWatcher)
   watcher.eventCallback(handle)
 }
