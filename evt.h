@@ -11,7 +11,10 @@
 
 // Create a new listener on the given channel. Events will be passed
 // to the callback of *pWatcher.
-int setupListener(char* channel, size_t channelLen, PVOID pWatcher);
+int SetupListener(char* channel, size_t channelLen, PVOID pWatcher);
+
+// Get the string for the last error code
+char* GetLastErrorString();
 
 // Render the fields for the given context. Allocates an array
 // of values based on the context, these can be accessed using
