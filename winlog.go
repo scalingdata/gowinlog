@@ -8,18 +8,26 @@ import (
 
 type WinLogEvent struct {
   Msg string
-  Provider string
+  ProviderName string
   EventSource string
-  EventId int
-  Version int
-  Level int
+  EventId uint
+  Qualifiers uint
+  Version uint
+  ProcessId uint
+  ThreadId uint
+  Level uint
   LevelName string
-  Opcode int
+  Opcode uint
+  Task uint
   Keywords []string
   Created time.Time
-  RecordId int
+  RecordId uint
   Channel string
-  Computer string
+  ComputerName string
+  TaskText string
+  OpcodeText string
+  ChannelText string
+  ProviderText string
 }
 
 type WinLogWatcher struct {

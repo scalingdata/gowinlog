@@ -79,6 +79,42 @@ char* GetRenderedStringValue(PVOID pRenderedValues, int property) {
   return value;
 }
 
+unsigned long GetRenderedByteValue(PVOID pRenderedValues, int property) {
+   return ((PEVT_VARIANT)pRenderedValues)[property].ByteVal; 
+}
+
+unsigned long GetRenderedUInt16Value(PVOID pRenderedValues, int property) {
+   return ((PEVT_VARIANT)pRenderedValues)[property].UInt16Val; 
+}
+
+unsigned long GetRenderedUInt32Value(PVOID pRenderedValues, int property) {
+   return ((PEVT_VARIANT)pRenderedValues)[property].UInt32Val; 
+}
+
+unsigned long GetRenderedUInt64Value(PVOID pRenderedValues, int property) {
+   return ((PEVT_VARIANT)pRenderedValues)[property].UInt64Val; 
+}
+
+long GetRenderedSByteValue(PVOID pRenderedValues, int property) {
+   return ((PEVT_VARIANT)pRenderedValues)[property].SByteVal; 
+}
+
+long GetRenderedInt16Value(PVOID pRenderedValues, int property) {
+   return ((PEVT_VARIANT)pRenderedValues)[property].Int16Val; 
+}
+
+long GetRenderedInt32Value(PVOID pRenderedValues, int property) {
+   return ((PEVT_VARIANT)pRenderedValues)[property].Int32Val; 
+}
+
+long GetRenderedInt64Value(PVOID pRenderedValues, int property) {
+   return ((PEVT_VARIANT)pRenderedValues)[property].Int64Val; 
+}
+
+unsigned long GetRenderedFileTimeValue(PVOID pRenderedValues, int property) {
+   return ((PEVT_VARIANT)pRenderedValues)[property].FileTimeVal;
+}
+
 // Dispatch events and errors appropriately
 DWORD WINAPI SubscriptionCallback(EVT_SUBSCRIBE_NOTIFY_ACTION action, PVOID pContext, EVT_HANDLE hEvent)
 {    

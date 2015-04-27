@@ -8,6 +8,7 @@ package winlog
 */
 import "C"
 import (
+  "time"
   "fmt"
   "unsafe"
 )
@@ -113,6 +114,54 @@ func renderStringField(fields C.PVOID, fieldIndex int) (string, bool, error) {
   return value, true, nil
 }
 
+func renderFileTimeField(fields C.PVOID, fieldIndex int) (time.Time, bool, error) {
+  fieldType := C.GetRenderedValueType(fields, C.int(fieldIndex))
+  if fieldType != EvtVarTypeFileTime {
+    return time.Time{}, false, nil
+  }
+  field := C.GetRenderedFileTimeValue(fields, C.int(fieldIndex))
+  //fmt.Printf("Time: %v\n", int(field))
+  return time.Date(1601, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(100 * field) * time.Nanosecond), true, nil
+}
+
+func renderUIntField(fields C.PVOID, fieldIndex int) (uint, bool, error) {
+  var field C.ulong
+  fieldType := C.GetRenderedValueType(fields, C.int(fieldIndex))
+  switch fieldType {
+  case EvtVarTypeByte:
+  	field = C.GetRenderedByteValue(fields, C.int(fieldIndex))
+  case EvtVarTypeUInt16:
+    field = C.GetRenderedUInt16Value(fields, C.int(fieldIndex))
+  case EvtVarTypeUInt32:
+    field = C.GetRenderedUInt32Value(fields, C.int(fieldIndex))
+  case EvtVarTypeUInt64:
+    field = C.GetRenderedUInt64Value(fields, C.int(fieldIndex))
+  default:
+    return 0, false, nil
+  }
+
+  return uint(field), true, nil
+}
+
+func renderIntField(fields C.PVOID, fieldIndex int) (int, bool, error) {
+  var field C.long
+  fieldType := C.GetRenderedValueType(fields, C.int(fieldIndex))
+  switch fieldType {
+  case EvtVarTypeByte:
+  	field = C.GetRenderedSByteValue(fields, C.int(fieldIndex))
+  case EvtVarTypeInt16:
+    field = C.GetRenderedInt16Value(fields, C.int(fieldIndex))
+  case EvtVarTypeInt32:
+    field = C.GetRenderedInt32Value(fields, C.int(fieldIndex))
+  case EvtVarTypeInt64:
+    field = C.GetRenderedInt64Value(fields, C.int(fieldIndex))
+  default:
+    return 0, false, nil
+  }
+
+  return int(field), true, nil
+}
+
 func formatMessage(eventPublisherHandle, eventHandle C.PVOID, format int) (string, error) {
   cString := C.GetFormattedMessage(eventPublisherHandle, eventHandle, C.int(format))
   if cString == nil {
@@ -133,6 +182,16 @@ func (self *WinLogWatcher) eventCallback(handle C.HANDLE) {
   computerName, _, _ := renderStringField(C.PVOID(renderedFields), EvtSystemComputer)
   providerName, _, _ := renderStringField(C.PVOID(renderedFields), EvtSystemProviderName)
   channel, _, _ := renderStringField(C.PVOID(renderedFields), EvtSystemChannel)
+  level, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemLevel)
+  task, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemTask)
+  opcode, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemOpcode)
+  recordId, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemEventRecordId)
+  qualifiers, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemQualifiers)
+  eventId, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemEventID)
+  processId, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemProcessID)
+  threadId, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemThreadID)
+  version, _, _ := renderUIntField(C.PVOID(renderedFields), EvtSystemVersion)
+  created, _, _ := renderFileTimeField(C.PVOID(renderedFields), EvtSystemTimeCreated)
   msgText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageEvent)
   lvlText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageLevel)
   taskText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageTask)
@@ -140,9 +199,30 @@ func (self *WinLogWatcher) eventCallback(handle C.HANDLE) {
   opcodeText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageOpcode)
   channelText, _ := formatMessage(C.PVOID(publisherHandle), C.PVOID(handle), EvtFormatMessageChannel)
   
-  fmt.Printf("Provider: %v, channel: %v, computerName: %v, msg: %v, channelText: %v, opcodeText: %v, level: %v, task: %v, providerText: %v \n", providerName, channel, computerName, msgText, channelText, opcodeText, lvlText, taskText, providerText)
-
   C.free(unsafe.Pointer(renderedFields))
+  event := WinLogEvent {
+    Msg: msgText,
+    ProviderName: providerName,
+    Channel: channel,
+    ComputerName: computerName, 
+    Level: level,
+    Task: task,
+    Opcode: opcode,
+    RecordId: recordId,
+    EventId: eventId,
+    Qualifiers: qualifiers,
+    ProcessId: processId,
+    ThreadId: threadId,
+    Version: version,
+    Created: created,
+
+    LevelName: lvlText,
+    TaskText: taskText,
+    ProviderText: providerText,
+    OpcodeText: opcodeText,
+    ChannelText: channelText,
+  }
+  fmt.Printf("EvenT: %v\n", event)
 }
 
 func (self *WinLogWatcher) errorCallback(handle C.HANDLE) {
