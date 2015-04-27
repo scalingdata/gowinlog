@@ -120,7 +120,6 @@ func renderFileTimeField(fields C.PVOID, fieldIndex int) (time.Time, bool, error
     return time.Time{}, false, nil
   }
   field := C.GetRenderedFileTimeValue(fields, C.int(fieldIndex))
-  fmt.Printf("Time: %v\n", int(field))
   return time.Unix(int64(field), 0), true, nil
 }
 
@@ -179,6 +178,11 @@ func (self *WinLogWatcher) eventCallback(handle C.ULONGLONG) {
   }
   
   publisherHandle := C.GetEventPublisherHandle(C.PVOID(renderedFields))
+  if publisherHandle == 0 {
+  	  return
+  }
+
+  /* If fields don't exist we include the nil value */
   computerName, _, _ := renderStringField(C.PVOID(renderedFields), EvtSystemComputer)
   providerName, _, _ := renderStringField(C.PVOID(renderedFields), EvtSystemProviderName)
   channel, _, _ := renderStringField(C.PVOID(renderedFields), EvtSystemChannel)
@@ -198,31 +202,40 @@ func (self *WinLogWatcher) eventCallback(handle C.ULONGLONG) {
   providerText, _ := formatMessage(publisherHandle, handle, EvtFormatMessageProvider)
   opcodeText, _ := formatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
   channelText, _ := formatMessage(publisherHandle, handle, EvtFormatMessageChannel)
-  
+  idText, _ := formatMessage(publisherHandle, handle, EvtFormatMessageId)
+
+  C.CloseEvtHandle(publisherHandle)
   C.free(unsafe.Pointer(renderedFields))
+
   event := WinLogEvent {
-    Msg: msgText,
     ProviderName: providerName,
-    Channel: channel,
-    ComputerName: computerName, 
+    EventId: eventId,
+    Qualifiers: qualifiers,
     Level: level,
     Task: task,
     Opcode: opcode,
+    Created: created,
     RecordId: recordId,
-    EventId: eventId,
-    Qualifiers: qualifiers,
     ProcessId: processId,
     ThreadId: threadId,
+    Channel: channel,
+    ComputerName: computerName, 
     Version: version,
-    Created: created,
+    
 
-    LevelName: lvlText,
+    Msg: msgText,
+    LevelText: lvlText,
     TaskText: taskText,
-    ProviderText: providerText,
     OpcodeText: opcodeText,
     ChannelText: channelText,
+    ProviderText: providerText,
+    IdText: idText,
   }
-  fmt.Printf("EvenT: %v\n", event)
+
+  
+  fmt.Printf("Event handle: %v\n", handle)
+
+  self.eventChan <- &event
 }
 
 func (self *WinLogWatcher) errorCallback(handle C.ULONGLONG) {

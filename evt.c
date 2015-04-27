@@ -3,8 +3,10 @@
 #include "evt.h"
 #include "_cgo_export.h"
 
-// Extract an array of all the attributes specified in the context
-// Allocates a buffer to hold the attributes and points *pRenderedValues at it
+int CloseEvtHandle(ULONGLONG hEvent) {
+	EvtClose((EVT_HANDLE)hEvent);
+}
+
 PVOID RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent) {
   DWORD dwBufferSize = 0;
   DWORD dwUsed = 0;
@@ -69,13 +71,10 @@ int GetRenderedValueType(PVOID pRenderedValues, int property) {
   return (int)((PEVT_VARIANT)pRenderedValues)[property].Type;
 }
 
-// Get the String value of the rendered attribute at the given index
-// Allocates a string to put the property in
 char* GetRenderedStringValue(PVOID pRenderedValues, int property) {
   wchar_t const * propVal = ((PEVT_VARIANT)pRenderedValues)[property].StringVal;
   size_t lenNarrowPropVal = wcstombs(NULL, propVal, 0) + 1;
   char* value = malloc(lenNarrowPropVal);
-  //printf("rendered msg: %lx %lx\n", value, value+(lenNarrowPropVal));
   if (!value) {
       return NULL;
   }
@@ -144,9 +143,6 @@ DWORD WINAPI SubscriptionCallback(EVT_SUBSCRIBE_NOTIFY_ACTION action, PVOID pCon
     return ERROR_SUCCESS; // The service ignores the returned status.
 }
 
-// Create a new subscription for the specified channel
-// Takes the channel name, length of the channel name, 
-// and a pointer to the Go WinLogWatcher.
 int setupListener(char* channel, size_t channelLen, PVOID pWatcher)
 {
     DWORD status = ERROR_SUCCESS;

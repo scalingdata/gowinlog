@@ -6,27 +6,31 @@ import (
 )
 
 type WinLogEvent struct {
-  Msg string
+  // From EvtRender
   ProviderName string
-  EventSource string
   EventId uint
   Qualifiers uint
-  Version uint
-  ProcessId uint
-  ThreadId uint
   Level uint
-  LevelName string
-  Opcode uint
   Task uint
-  Keywords []string
+  Opcode uint
   Created time.Time
   RecordId uint
+  ProcessId uint
+  ThreadId uint
   Channel string
   ComputerName string
+  Version uint
+
+  // From EvtFormatMessage
+  Msg string
+  LevelText string
   TaskText string
-  OpcodeText string
+  OpcodeText string 
+  EventSource string
+  Keywords []string
   ChannelText string
   ProviderText string
+  IdText string
 }
 
 type WinLogWatcher struct {
@@ -34,6 +38,14 @@ type WinLogWatcher struct {
   eventChan chan *WinLogEvent
 
   renderContext uint64
+}
+
+func (self *WinLogWatcher) Event() chan *WinLogEvent {
+  return self.eventChan
+}
+
+func (self *WinLogWatcher) Error() chan error {
+  return self.errChan
 }
 
 func NewWinLogWatcher() (*WinLogWatcher, error) {
