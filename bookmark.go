@@ -8,40 +8,40 @@ package winlog
 */
 import "C"
 import (
-  "unsafe"
+	"unsafe"
 )
 
 func CreateBookmark() (uint64, error) {
-  bookmark := uint64(C.CreateBookmark())
-  if bookmark == 0 {
-  	return 0, GetLastError()
-  }
-  return bookmark, nil
+	bookmark := uint64(C.CreateBookmark())
+	if bookmark == 0 {
+		return 0, GetLastError()
+	}
+	return bookmark, nil
 }
 
 func CreateBookmarkFromXml(xmlString string) (uint64, error) {
-  cString := C.CString(xmlString)
-  bookmark := C.CreateBookmarkFromXML(cString)
-  C.free(unsafe.Pointer(cString))
-  if bookmark == 0 {
-  	return 0, GetLastError()
-  }
-  return uint64(bookmark), nil
+	cString := C.CString(xmlString)
+	bookmark := C.CreateBookmarkFromXML(cString)
+	C.free(unsafe.Pointer(cString))
+	if bookmark == 0 {
+		return 0, GetLastError()
+	}
+	return uint64(bookmark), nil
 }
 
 func UpdateBookmark(bookmarkHandle, eventHandle uint64) error {
-  if C.UpdateBookmark(C.ULONGLONG(bookmarkHandle), C.ULONGLONG(eventHandle)) == 0 {
-  	return GetLastError()
-  }
-  return nil
+	if C.UpdateBookmark(C.ULONGLONG(bookmarkHandle), C.ULONGLONG(eventHandle)) == 0 {
+		return GetLastError()
+	}
+	return nil
 }
 
 func RenderBookmark(bookmarkHandle uint64) (string, error) {
-  cString := C.RenderBookmark(C.ULONGLONG(bookmarkHandle))
-  if cString == nil {
-    return "", GetLastError()
-  }
-  bookmarkXml := C.GoString(cString)
-  C.free(unsafe.Pointer(cString))
-  return bookmarkXml, nil
+	cString := C.RenderBookmark(C.ULONGLONG(bookmarkHandle))
+	if cString == nil {
+		return "", GetLastError()
+	}
+	bookmarkXml := C.GoString(cString)
+	C.free(unsafe.Pointer(cString))
+	return bookmarkXml, nil
 }
