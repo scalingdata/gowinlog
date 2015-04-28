@@ -7,6 +7,10 @@ int CloseEvtHandle(ULONGLONG hEvent) {
 	EvtClose((EVT_HANDLE)hEvent);
 }
 
+int CancelEvtHandle(ULONGLONG hEvent) {
+	EvtCancel((EVT_HANDLE)hEvent);
+}
+
 PVOID RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent) {
 	DWORD dwBufferSize = 0;
 	DWORD dwUsed = 0;
@@ -151,7 +155,7 @@ DWORD WINAPI SubscriptionCallback(EVT_SUBSCRIBE_NOTIFY_ACTION action, PVOID pCon
     return ERROR_SUCCESS; // The service ignores the returned status.
 }
 
-int SetupListener(char* channel, size_t channelLen, PVOID pWatcher)
+ULONGLONG SetupListener(char* channel, PVOID pWatcher, EVT_HANDLE hBookmark, EVT_SUBSCRIBE_FLAGS flags)
 {
 	DWORD status = ERROR_SUCCESS;
 	EVT_HANDLE hSubscription = NULL;
@@ -160,18 +164,22 @@ int SetupListener(char* channel, size_t channelLen, PVOID pWatcher)
 	LPWSTR lChannel = malloc(maxWideChannelLen * sizeof(wchar_t));
 	if (!lChannel) {
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-		return 1;
+		return 0;
 	}
 
     // Convert Go string to wide characters
 	mbstowcs(lChannel, channel, maxWideChannelLen);
 
     // Subscribe to events beginning in the present. All future events will trigger the callback.
-	hSubscription = EvtSubscribe(NULL, NULL, lChannel, NULL, NULL, pWatcher, (EVT_SUBSCRIBE_CALLBACK)SubscriptionCallback, EvtSubscribeToFutureEvents);
+	hSubscription = EvtSubscribe(NULL, NULL, lChannel, NULL, hBookmark, pWatcher, (EVT_SUBSCRIBE_CALLBACK)SubscriptionCallback, flags);
 	free(lChannel);
-	if (NULL == hSubscription)
-	{   
-		return 2;
-	}
-	return 0;
+	return (ULONGLONG)hSubscription;
+}
+
+ULONGLONG CreateListenerFromNow(char* channel, PVOID pWatcher) {
+	return SetupListener(channel, pWatcher, NULL, EvtSubscribeToFutureEvents);
+}
+
+ULONGLONG CreateListenerFromBookmark(char* channel, PVOID pWatcher, ULONGLONG hBookmark) {
+	return SetupListener(channel, pWatcher, NULL, EvtSubscribeStartAfterBookmark);
 }

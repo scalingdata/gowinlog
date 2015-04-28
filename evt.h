@@ -10,8 +10,14 @@
    64-bit unsigned ints. */
 
 // Create a new listener on the given channel. Events will be passed
-// to the callback of *pWatcher.
-int SetupListener(char* channel, size_t channelLen, PVOID pWatcher);
+// to the callback of *pWatcher. Starts at the current position in the log
+ULONGLONG CreateListenerFromNow(char* channel, PVOID pWatcher);
+
+// Create a new listener on the given channel. Events will be passed
+// to the callback of *pWatcher. Starts at the given bookmark handle.
+// Note: This doesn't set the strict flag - if the log was truncated between
+// the bookmark and now, it'll continue silently from the earliest event.
+ULONGLONG CreateListenerFromBookmark(char* channel, PVOID pWatcher, ULONGLONG hBookmark);
 
 // Get the string for the last error code
 char* GetLastErrorString();
@@ -50,6 +56,9 @@ ULONGLONG GetEventPublisherHandle(PVOID pRenderedValues);
 
 // Cast the ULONGLONG back to a pointer and close it
 int CloseEvtHandle(ULONGLONG hEvent);
+
+// Cancel pending operations on a handle
+int CancelEvtHandle(ULONGLONG hEvent);
 
 // Create a context for RenderEventValues that decodes standard system properties.
 // Properties in the resulting array can be accessed using the indices from 

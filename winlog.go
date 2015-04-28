@@ -34,13 +34,18 @@ type WinLogEvent struct {
   IdText string
 }
 
+type ChannelWatcher struct {
+  bookmark uint64
+  subscription uint64
+}
+
 type WinLogWatcher struct {
   errChan chan error
   eventChan chan *WinLogEvent
 
   renderContext uint64
-  bookmarkHandles map[string]uint64
-  bookmarkMutex sync.Mutex
+  watches map[string]*ChannelWatcher
+  watchMutex sync.Mutex
 }
 
 func (self *WinLogWatcher) Event() chan *WinLogEvent {
@@ -60,52 +65,89 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
     errChan: make(chan error, 1),
     eventChan: make(chan *WinLogEvent, 1),
     renderContext: cHandle,
-    bookmarkHandles: make(map[string]uint64),
+    watches: make(map[string]*ChannelWatcher),
   }, nil
 }
 
 func (self *WinLogWatcher) SubscribeFromNow(channel string) error { 
+  self.watchMutex.Lock()
+  defer self.watchMutex.Unlock()
+  if _, ok := self.watches[channel]; ok {
+    return fmt.Errorf("A watcher for channel %q already exists", channel)
+  }
   newBookmark, err := CreateBookmark()
   if err != nil {
     return err
   }
-  err = SetupListener(channel, self)
+  subscription, err := CreateListenerFromNow(channel, self)
   if err != nil {
+    CloseEventHandle(newBookmark)
     return err
   }
-  self.bookmarkMutex.Lock()
-  defer self.bookmarkMutex.Unlock()
-  self.bookmarkHandles[channel] = newBookmark
+  self.watches[channel] = & ChannelWatcher{
+    bookmark: newBookmark,
+    subscription: subscription,
+  }
   return nil
 }
 
 func (self *WinLogWatcher) SubscribeFromBookmark(channel string, xmlString string) error { 
+  self.watchMutex.Lock()
+  defer self.watchMutex.Unlock()
+  if _, ok := self.watches[channel]; ok {
+    return fmt.Errorf("A watcher for channel %q already exists", channel)
+  }
   bookmark, err := CreateBookmarkFromXml(xmlString)
   if err != nil {
     return err
   }
-  err = SetupListener(channel, self)
+  subscription, err := CreateListenerFromBookmark(channel, self, bookmark)
   if err != nil {
+    CloseEventHandle(bookmark)
     return err
   }
-  self.bookmarkMutex.Lock()
-  defer self.bookmarkMutex.Unlock()
-  self.bookmarkHandles[channel] = bookmark
+  self.watches[channel] = & ChannelWatcher{
+    bookmark: bookmark,
+    subscription: subscription,
+  }
   return nil
 }
 
 func (self *WinLogWatcher) GetBookmark(channel string) (string, error) {
-  self.bookmarkMutex.Lock()
-  bookmarkHandle, ok := self.bookmarkHandles[channel]
-  self.bookmarkMutex.Unlock()
+  self.watchMutex.Lock()
+  watch, ok := self.watches[channel]
+  self.watchMutex.Unlock()
   if !ok {
-    return "", fmt.Errorf("No handle for %v", channel)
+    return "", fmt.Errorf("No bookmark for %v exists", channel)
   } 
-  bookmarkXml, err := RenderBookmark(bookmarkHandle)
+  bookmarkXml, err := RenderBookmark(watch.bookmark)
   if err != nil {
     return "", err
   }
   return bookmarkXml, nil
+}
+
+func (self *WinLogWatcher) RemoveSubscription(channel string) (string, error){
+  self.watchMutex.Lock()
+  watch, ok := self.watches[channel]
+  defer self.watchMutex.Unlock()
+  if !ok {
+    return "", fmt.Errorf("No watcher for %q", channel)
+  }
+  cancelErr := CancelEventHandle(watch.subscription)
+  closeErr := CloseEventHandle(watch.subscription)
+  bookmarkXml, bookmarkErr := RenderBookmark(watch.bookmark)
+  CloseEventHandle(watch.bookmark)
+  delete(self.watches, channel)
+  var err error
+  if cancelErr != nil {
+    err = cancelErr
+  } else if closeErr != nil {
+    err = closeErr
+  } else if bookmarkErr != nil {
+    err = bookmarkErr
+  }
+  return bookmarkXml, err
 }
 
 func (self *WinLogWatcher) publishError(err error) {
@@ -180,12 +222,12 @@ func (self *WinLogWatcher) publishEvent(handle uint64) {
 
   self.eventChan <- &event
 
-  self.bookmarkMutex.Lock()
-  bookmarkHandle, ok := self.bookmarkHandles[channel]
-  self.bookmarkMutex.Unlock()
+  self.watchMutex.Lock()
+  defer self.watchMutex.Unlock()
+  watch, ok := self.watches[channel]
   if !ok {
     self.errChan <- fmt.Errorf("No handle for channel bookmark %q", channel)
     return
   } 
-  UpdateBookmark(bookmarkHandle, handle)
+  UpdateBookmark(watch.bookmark, handle)
 }

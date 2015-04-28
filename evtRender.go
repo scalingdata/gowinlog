@@ -82,11 +82,24 @@ func GetSystemRenderContext() uint64 {
 	return uint64(C.CreateSystemRenderContext())
 }
 
-func SetupListener(channel string, watcher *WinLogWatcher) error {
+func CreateListenerFromNow(channel string, watcher *WinLogWatcher) (uint64, error) {
   cChan := C.CString(channel)
-  C.SetupListener(cChan, C.size_t(len(channel)), C.PVOID(watcher))
+  listenerHandle := C.CreateListenerFromNow(cChan, C.PVOID(watcher))
   C.free(unsafe.Pointer(cChan))
-  return nil
+  if listenerHandle == 0 {
+  	return 0, GetLastError()
+  }
+  return uint64(listenerHandle), nil
+}
+
+func CreateListenerFromBookmark(channel string, watcher *WinLogWatcher, bookmarkHandle uint64) (uint64, error) {
+  cChan := C.CString(channel)
+  listenerHandle := C.CreateListenerFromNow(cChan, C.PVOID(watcher), )
+  C.free(unsafe.Pointer(cChan))
+  if listenerHandle == 0 {
+  	return 0, GetLastError()
+  }
+  return uint64(listenerHandle), nil
 }
 
 func RenderStringField(fields unsafe.Pointer, fieldIndex int) (string, bool) {
@@ -177,8 +190,18 @@ func GetEventPublisherHandle(renderedFields unsafe.Pointer) uint64 {
   return uint64(C.GetEventPublisherHandle(C.PVOID(renderedFields)))
 }
 
-func CloseEventHandle(handle uint64) int {
-  return int(C.CloseEvtHandle(C.ULONGLONG(handle)))
+func CloseEventHandle(handle uint64) error {
+  if C.CloseEvtHandle(C.ULONGLONG(handle)) != 1 {
+  	return GetLastError()
+  }
+  return nil
+}
+
+func CancelEventHandle(handle uint64) error {
+  if C.CancelEvtHandle(C.ULONGLONG(handle)) != 1 {
+  	return GetLastError()
+  }
+  return nil
 }
 
 func Free(ptr unsafe.Pointer) {
