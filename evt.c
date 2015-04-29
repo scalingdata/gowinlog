@@ -183,3 +183,19 @@ ULONGLONG CreateListenerFromNow(char* channel, PVOID pWatcher) {
 ULONGLONG CreateListenerFromBookmark(char* channel, PVOID pWatcher, ULONGLONG hBookmark) {
 	return SetupListener(channel, pWatcher, NULL, EvtSubscribeStartAfterBookmark);
 }
+
+ULONGLONG GetTestEventHandle() {
+	DWORD status = ERROR_SUCCESS;
+	EVT_HANDLE record = 0;
+	DWORD recordsReturned;
+	EVT_HANDLE result = EvtQuery(NULL, L"Application", L"*", EvtQueryChannelPath);
+	if (result == 0) {
+		return 0;
+	}
+    if (!EvtNext(result, 1, &record, 500, 0, &recordsReturned)) {
+    	EvtClose(result);
+    	return 0;
+    }
+    EvtClose(result);
+    return (ULONGLONG)record;
+}

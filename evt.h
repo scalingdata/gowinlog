@@ -64,3 +64,6 @@ int CancelEvtHandle(ULONGLONG hEvent);
 // Properties in the resulting array can be accessed using the indices from 
 // EvtSystem*
 ULONGLONG CreateSystemRenderContext();
+
+// For testing, get a handle on the first event in the log
+ULONGLONG GetTestEventHandle();

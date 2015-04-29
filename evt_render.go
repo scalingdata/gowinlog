@@ -225,13 +225,21 @@ func GetLastError() error {
 // Render the system properties from the event and returns an array of properties.
 // Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
 // or RenderUIntField depending on type. This buffer must be freed after use.
-func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) RenderedFields {
-	return RenderedFields(C.RenderEventValues(C.ULONGLONG(renderContext), C.ULONGLONG(eventHandle)))
+func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) (RenderedFields, error) {
+	values := RenderedFields(C.RenderEventValues(C.ULONGLONG(renderContext), C.ULONGLONG(eventHandle)))
+	if values == nil {
+		return nil, GetLastError()
+	}
+	return values, nil
 }
 
 // Get a handle that represents the publisher of the event, given the rendered event values.
-func GetEventPublisherHandle(renderedFields RenderedFields) PublisherHandle {
-	return PublisherHandle(C.GetEventPublisherHandle(C.PVOID(renderedFields)))
+func GetEventPublisherHandle(renderedFields RenderedFields) (PublisherHandle, error) {
+	handle := PublisherHandle(C.GetEventPublisherHandle(C.PVOID(renderedFields)))
+	if handle == 0 {
+		return 0, GetLastError()
+	}
+	return handle, nil
 }
 
 // Close an event handle.
@@ -252,6 +260,15 @@ func CancelEventHandle(handle uint64) error {
 
 func Free(ptr unsafe.Pointer) {
 	C.free(ptr)
+}
+
+/* Get the first event in the log, for testing */
+func getTestEventHandle() (EventHandle, error) { 
+	handle := C.GetTestEventHandle()
+	if handle == 0 {
+		return 0, GetLastError()
+	}
+	return EventHandle(handle), nil
 }
 
 /* These are entry points for the callback to hand the pointer to Go-land.

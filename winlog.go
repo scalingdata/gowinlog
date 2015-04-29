@@ -10,29 +10,28 @@ import (
 // Stores the common fields from a log event
 type WinLogEvent struct {
 	// From EvtRender
-	ProviderName string
-	EventId      uint64
-	Qualifiers   uint64
-	Level        uint64
-	Task         uint64
-	Opcode       uint64
-	Created      time.Time
-	RecordId     uint64
-	ProcessId    uint64
-	ThreadId     uint64
-	Channel      string
-	ComputerName string
-	Version      uint64
+	ProviderName string 
+	EventId      uint64 
+	Qualifiers   uint64 
+	Level        uint64 
+	Task         uint64 
+	Opcode       uint64 
+	Created      time.Time 
+	RecordId     uint64 
+	ProcessId    uint64 
+	ThreadId     uint64 
+	Channel      string 
+	ComputerName string 
+	Version      uint64 
 
 	// From EvtFormatMessage
-	Msg          string
-	LevelText    string
-	TaskText     string
-	OpcodeText   string
-	EventSource  string
-	Keywords     []string
-	ChannelText  string
-	ProviderText string
+	Msg          string 
+	LevelText    string 
+	TaskText     string 
+	OpcodeText   string 
+	Keywords     []string 
+	ChannelText  string 
+	ProviderText string 
 	IdText       string
 }
 
@@ -199,19 +198,15 @@ func (self *WinLogWatcher) PublishError(err error) {
 	self.errChan <- err
 }
 
-func (self *WinLogWatcher) PublishEvent(handle EventHandle) {
-	renderedFields := RenderEventValues(self.renderContext, handle)
-	if renderedFields == nil {
-		err := GetLastError()
-		self.PublishError(fmt.Errorf("Failed to render event values: %v", err))
-		return
+func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error) {
+    renderedFields, err := RenderEventValues(self.renderContext, handle)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to render event values: %v", err)
 	}
 
-	publisherHandle := GetEventPublisherHandle(renderedFields)
-	if publisherHandle == 0 {
-		err := GetLastError()
-		self.PublishError(fmt.Errorf("Failed to render event values: %v", err))
-		return
+	publisherHandle, err := GetEventPublisherHandle(renderedFields)
+	if err != nil{
+		return nil, fmt.Errorf("Failed to render event values: %v", err)
 	}
 
 	/* If fields don't exist we include the nil value */
@@ -263,14 +258,22 @@ func (self *WinLogWatcher) PublishEvent(handle EventHandle) {
 		ProviderText: providerText,
 		IdText:       idText,
 	}
+    return &event, nil
+}
 
-	self.eventChan <- &event
+func (self *WinLogWatcher) PublishEvent(handle EventHandle) {
+	event, err := self.convertEvent(handle)
+	if err != nil {
+		self.PublishError(err)
+		return
+	}
+	self.eventChan <- event
 
 	self.watchMutex.Lock()
 	defer self.watchMutex.Unlock()
-	watch, ok := self.watches[channel]
+	watch, ok := self.watches[event.Channel]
 	if !ok {
-		self.errChan <- fmt.Errorf("No handle for channel bookmark %q", channel)
+		self.errChan <- fmt.Errorf("No handle for channel bookmark %q", event.Channel)
 		return
 	}
 	UpdateBookmark(watch.bookmark, handle)
