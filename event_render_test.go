@@ -31,7 +31,7 @@ type SystemXml struct {
 	Level        uint64 `xml:"Level"`
 	Task         uint64 `xml:"Task"`
 	Opcode       uint64 `xml:"Opcode"`
-	Created      TimeCreatedXml
+	TimeCreated      TimeCreatedXml
 	RecordId     uint64 `xml:"EventRecordID"`
 	Execution    ExecutionXml
 	Channel      string `xml:"Channel"`
@@ -99,6 +99,7 @@ func TestXmlRenderMatchesOurs(t *T) {
 	assertEqual(event.OpcodeText, eventXml.RenderingInfo.OpcodeText, t)
 	assertEqual(event.ChannelText, eventXml.RenderingInfo.ChannelText, t)
 	assertEqual(event.ProviderText, eventXml.RenderingInfo.ProviderText, t)
+	assertEqual(event.Created.Format("2006-01-02T15:04:05.000000000Z"), eventXml.System.TimeCreated.SystemTime, t)
 }
 
 func BenchmarkXmlDecode(b *B) {
