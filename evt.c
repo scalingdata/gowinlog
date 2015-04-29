@@ -31,10 +31,10 @@ PVOID RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent) {
 }
 
 char* GetLastErrorString() {
-    DWORD dwErr = GetLastError();
-    LPSTR lpszMsgBuf;
-    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS, 0, dwErr, 0, (LPSTR)&lpszMsgBuf, 0, NULL);
-    return (char *)lpszMsgBuf;
+	DWORD dwErr = GetLastError();
+	LPSTR lpszMsgBuf;
+	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS, 0, dwErr, 0, (LPSTR)&lpszMsgBuf, 0, NULL);
+	return (char *)lpszMsgBuf;
 }
 
 char* GetFormattedMessage(ULONGLONG hEventPublisher, ULONGLONG hEvent, int format) {
@@ -192,10 +192,10 @@ ULONGLONG GetTestEventHandle() {
 	if (result == 0) {
 		return 0;
 	}
-    if (!EvtNext(result, 1, &record, 500, 0, &recordsReturned)) {
-    	EvtClose(result);
-    	return 0;
-    }
-    EvtClose(result);
-    return (ULONGLONG)record;
+	if (!EvtNext(result, 1, &record, 500, 0, &recordsReturned)) {
+		EvtClose(result);
+		return 0;
+	}
+	EvtClose(result);
+	return (ULONGLONG)record;
 }

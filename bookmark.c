@@ -25,22 +25,22 @@ char* RenderBookmark(ULONGLONG hBookmark) {
 	DWORD dwUsed;
 	DWORD dwProps;
 	DWORD dwSize = 0;
-    EvtRender(NULL, (EVT_HANDLE)hBookmark, EvtRenderBookmark, dwSize, NULL, &dwUsed, &dwProps);
-    if (GetLastError() != ERROR_INSUFFICIENT_BUFFER){
-    	return NULL;
-    }
-    dwSize = dwUsed + 1;
+	EvtRender(NULL, (EVT_HANDLE)hBookmark, EvtRenderBookmark, dwSize, NULL, &dwUsed, &dwProps);
+	if (GetLastError() != ERROR_INSUFFICIENT_BUFFER){
+		return NULL;
+	}
+	dwSize = dwUsed + 1;
 	LPWSTR xmlWide = malloc((dwSize) * sizeof(wchar_t));
 	if (!xmlWide) {
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		return NULL;
 	}
 	int renderResult = EvtRender(NULL, (EVT_HANDLE)hBookmark, EvtRenderBookmark, dwSize, xmlWide, &dwUsed, &dwProps);
-    if (!renderResult) {
-    	free(xmlWide);
-    	return 0;
-    }
-    size_t xmlNarrowLen = wcstombs(NULL, xmlWide, 0) + 1;
+	if (!renderResult) {
+		free(xmlWide);
+		return 0;
+	}
+	size_t xmlNarrowLen = wcstombs(NULL, xmlWide, 0) + 1;
 	void* xmlNarrow = malloc(xmlNarrowLen);
 	if (!xmlNarrow) {
 		free(xmlWide);
