@@ -176,8 +176,8 @@ ULONGLONG SetupListener(char* channel, PVOID pWatcher, EVT_HANDLE hBookmark, EVT
 	return (ULONGLONG)hSubscription;
 }
 
-ULONGLONG CreateListenerFromNow(char* channel, PVOID pWatcher) {
-	return SetupListener(channel, pWatcher, NULL, EvtSubscribeToFutureEvents);
+ULONGLONG CreateListener(char* channel, int startPos, PVOID pWatcher) {
+	return SetupListener(channel, pWatcher, NULL, startPos);
 }
 
 ULONGLONG CreateListenerFromBookmark(char* channel, PVOID pWatcher, ULONGLONG hBookmark) {

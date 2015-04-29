@@ -74,9 +74,19 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
 	}, nil
 }
 
+// Subscribe to a Windows Event Log channel, starting with the first event
+// in the log
+func (self *WinLogWatcher) SubscribeFromBeginning(channel string) error {
+	return self.subscribeWithoutBookmark(channel, EvtSubscribeStartAtOldestRecord)
+}
+
 // Subscribe to a Windows Event Log channel, starting with the next event
 // that arrives.
 func (self *WinLogWatcher) SubscribeFromNow(channel string) error {
+	return self.subscribeWithoutBookmark(channel, EvtSubscribeToFutureEvents)
+}
+
+func (self *WinLogWatcher) subscribeWithoutBookmark(channel string, flags EVT_SUBSCRIBE_FLAGS) error {
 	self.watchMutex.Lock()
 	defer self.watchMutex.Unlock()
 	if _, ok := self.watches[channel]; ok {
@@ -86,7 +96,7 @@ func (self *WinLogWatcher) SubscribeFromNow(channel string) error {
 	if err != nil {
 		return err
 	}
-	subscription, err := CreateListenerFromNow(channel, self)
+	subscription, err := CreateListener(channel, flags, self)
 	if err != nil {
 		CloseEventHandle(uint64(newBookmark))
 		return err

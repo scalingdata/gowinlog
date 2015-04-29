@@ -12,6 +12,14 @@ import (
 	"unsafe"
 )
 
+type EVT_SUBSCRIBE_FLAGS int
+
+const (
+	EvtSubscribeToFutureEvents = iota
+	EvtSubscribeStartAtOldestRecord
+	EvtSubscribeStartAfterBookmark
+)
+
 type EVT_VARIANT_TYPE int
 
 const (
@@ -107,13 +115,12 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 	return context, nil
 }
 
-// Get a handle for a event log subscription on the given channel. Will begin at the
-// next event recieved on the channel after the subscription is registered.
+// Get a handle for a event log subscription on the given channel.
 // The resulting handle must be closed with CloseEventHandle.
-func CreateListenerFromNow(channel string, watcher LogEventCallback) (ListenerHandle, error) {
+func CreateListener(channel string, startpos EVT_SUBSCRIBE_FLAGS, watcher LogEventCallback) (ListenerHandle, error) {
 	cChan := C.CString(channel)
 	wrapper := &logEventCallbackWrapper{watcher}
-	listenerHandle := C.CreateListenerFromNow(cChan, C.PVOID(wrapper))
+	listenerHandle := C.CreateListener(cChan, C.int(startpos), C.PVOID(wrapper))
 	C.free(unsafe.Pointer(cChan))
 	if listenerHandle == 0 {
 		return 0, GetLastError()

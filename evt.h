@@ -11,7 +11,7 @@
 
 // Create a new listener on the given channel. Events will be passed
 // to the callback of *pWatcher. Starts at the current position in the log
-ULONGLONG CreateListenerFromNow(char* channel, PVOID pWatcher);
+ULONGLONG CreateListener(char* channel, int startpos, PVOID pWatcher);
 
 // Create a new listener on the given channel. Events will be passed
 // to the callback of *pWatcher. Starts at the given bookmark handle.
