@@ -14,7 +14,7 @@ import (
 	"unsafe"
 )
 
-/* Types for GetRenderedValueType */
+type EVT_VARIANT_TYPE int
 const (
 	EvtVarTypeNull = iota
 	EvtVarTypeString
@@ -43,6 +43,7 @@ const (
 )
 
 /* Fields that can be rendered with GetRendered*Value */
+type EVT_SYSTEM_PROPERTY_ID int
 const (
 	EvtSystemProviderName = iota
 	EvtSystemProviderGuid
@@ -65,6 +66,7 @@ const (
 )
 
 /* Formatting modes for GetFormattedMessage */
+type EVT_FORMAT_MESSAGE_FLAGS int
 const (
 	_ = iota
 	EvtFormatMessageEvent
@@ -78,31 +80,63 @@ const (
 	EvtFormatMessageXml
 )
 
-func GetSystemRenderContext() uint64 {
-	return uint64(C.CreateSystemRenderContext())
+type SysRenderContext uint64
+type ListenerHandle uint64
+type PublisherHandle uint64
+type EventHandle uint64
+type RenderedFields unsafe.Pointer
+
+type LogEventCallback interface {
+  PublishError(error)
+  PublishEvent(EventHandle)
 }
 
-func CreateListenerFromNow(channel string, watcher *WinLogWatcher) (uint64, error) {
+type logEventCallbackWrapper struct {
+	callback LogEventCallback
+}
+
+// Get a handle to a render context which will render properties from the System element.
+// Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting
+// handle must be closed with CloseEventHandle.
+func GetSystemRenderContext() (SysRenderContext, error) {
+	context := SysRenderContext(C.CreateSystemRenderContext())
+	if context == 0 {
+		return 0, GetLastError()
+	}
+	return context, nil
+}
+
+// Get a handle for a event log subscription on the given channel. Will begin at the
+// next event recieved on the channel after the subscription is registered. 
+// The resulting handle must be closed with CloseEventHandle.
+func CreateListenerFromNow(channel string, watcher LogEventCallback) (ListenerHandle, error) {
 	cChan := C.CString(channel)
-	listenerHandle := C.CreateListenerFromNow(cChan, C.PVOID(watcher))
+	wrapper := &logEventCallbackWrapper{watcher}
+	listenerHandle := C.CreateListenerFromNow(cChan, C.PVOID(wrapper))
 	C.free(unsafe.Pointer(cChan))
 	if listenerHandle == 0 {
 		return 0, GetLastError()
 	}
-	return uint64(listenerHandle), nil
+	return ListenerHandle(listenerHandle), nil
 }
 
-func CreateListenerFromBookmark(channel string, watcher *WinLogWatcher, bookmarkHandle uint64) (uint64, error) {
+// Get a handle for an event log subscription on the given channel. Will begin at the
+// bookmarked event, or the closest possible event if the log has been truncated.
+// The resulting handle must be closed with CloseEventHandle.
+func CreateListenerFromBookmark(channel string, watcher LogEventCallback, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
 	cChan := C.CString(channel)
-	listenerHandle := C.CreateListenerFromNow(cChan, C.PVOID(watcher))
+	wrapper := &logEventCallbackWrapper{watcher}
+	listenerHandle := C.CreateListenerFromBookmark(cChan, C.PVOID(wrapper), C.ULONGLONG(bookmarkHandle))
 	C.free(unsafe.Pointer(cChan))
 	if listenerHandle == 0 {
 		return 0, GetLastError()
 	}
-	return uint64(listenerHandle), nil
+	return ListenerHandle(listenerHandle), nil
 }
 
-func RenderStringField(fields unsafe.Pointer, fieldIndex int) (string, bool) {
+// Get the Go string for the field at the given index. Returns
+// false if the type of the field isn't EvtVarTypeString.
+func RenderStringField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (string, bool) {
 	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
 	if fieldType != EvtVarTypeString {
 		return "", false
@@ -118,7 +152,9 @@ func RenderStringField(fields unsafe.Pointer, fieldIndex int) (string, bool) {
 	return value, true
 }
 
-func RenderFileTimeField(fields unsafe.Pointer, fieldIndex int) (time.Time, bool) {
+// Get the timestamp of the field at the given index. Returns false if the 
+// type of the field isn't EvtVarTypeFileTime.
+func RenderFileTimeField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (time.Time, bool) {
 	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
 	if fieldType != EvtVarTypeFileTime {
 		return time.Time{}, false
@@ -127,7 +163,9 @@ func RenderFileTimeField(fields unsafe.Pointer, fieldIndex int) (time.Time, bool
 	return time.Unix(int64(field), 0), true
 }
 
-func RenderUIntField(fields unsafe.Pointer, fieldIndex int) (uint64, bool) {
+// Get the unsigned integer at the given index. Returns false if the field
+// type isn't EvtVarTypeByte, EvtVarTypeUInt16, EvtVarTypeUInt32, or EvtVarTypeUInt64. 
+func RenderUIntField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (uint64, bool) {
 	var field C.ULONGLONG
 	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
 	switch fieldType {
@@ -146,11 +184,13 @@ func RenderUIntField(fields unsafe.Pointer, fieldIndex int) (uint64, bool) {
 	return uint64(field), true
 }
 
-func RenderIntField(fields unsafe.Pointer, fieldIndex int) (int64, bool) {
+// Get the signed integer at the given index. Returns false if the type of 
+// the field isn't EvtVarTypeSByte, EvtVarTypeInt16, EvtVarTypeInt32, EvtVarTypeInt64. 
+func RenderIntField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (int64, bool) {
 	var field C.LONGLONG
 	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
 	switch fieldType {
-	case EvtVarTypeByte:
+	case EvtVarTypeSByte:
 		field = C.GetRenderedSByteValue(C.PVOID(fields), C.int(fieldIndex))
 	case EvtVarTypeInt16:
 		field = C.GetRenderedInt16Value(C.PVOID(fields), C.int(fieldIndex))
@@ -165,7 +205,8 @@ func RenderIntField(fields unsafe.Pointer, fieldIndex int) (int64, bool) {
 	return int64(field), true
 }
 
-func FormatMessage(eventPublisherHandle, eventHandle uint64, format int) (string, error) {
+// Get the formatted string that represents this message. This method wraps EvtFormatMessage.
+func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle, format EVT_FORMAT_MESSAGE_FLAGS) (string, error) {
 	cString := C.GetFormattedMessage(C.ULONGLONG(eventPublisherHandle), C.ULONGLONG(eventHandle), C.int(format))
 	if cString == nil {
 		return "", GetLastError()
@@ -175,6 +216,7 @@ func FormatMessage(eventPublisherHandle, eventHandle uint64, format int) (string
 	return value, nil
 }
 
+// Get the formatted string for the last error which occurred. Wraps GetLastError and FormatMessage.
 func GetLastError() error {
 	errStr := C.GetLastErrorString()
 	err := errors.New(C.GoString(errStr))
@@ -182,14 +224,19 @@ func GetLastError() error {
 	return err
 }
 
-func RenderEventValues(renderContext, eventHandle uint64) unsafe.Pointer {
-	return unsafe.Pointer(C.RenderEventValues(C.ULONGLONG(renderContext), C.ULONGLONG(eventHandle)))
+// Render the system properties from the event and returns an array of properties.
+// Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
+// or RenderUIntField depending on type. This buffer must be freed after use.
+func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) RenderedFields {
+	return RenderedFields(C.RenderEventValues(C.ULONGLONG(renderContext), C.ULONGLONG(eventHandle)))
 }
 
-func GetEventPublisherHandle(renderedFields unsafe.Pointer) uint64 {
-	return uint64(C.GetEventPublisherHandle(C.PVOID(renderedFields)))
+// Get a handle that represents the publisher of the event, given the rendered event values.
+func GetEventPublisherHandle(renderedFields RenderedFields) PublisherHandle {
+	return PublisherHandle(C.GetEventPublisherHandle(C.PVOID(renderedFields)))
 }
 
+// Close an event handle.
 func CloseEventHandle(handle uint64) error {
 	if C.CloseEvtHandle(C.ULONGLONG(handle)) != 1 {
 		return GetLastError()
@@ -197,6 +244,7 @@ func CloseEventHandle(handle uint64) error {
 	return nil
 }
 
+// Cancel pending actions on the event handle.
 func CancelEventHandle(handle uint64) error {
 	if C.CancelEvtHandle(C.ULONGLONG(handle)) != 1 {
 		return GetLastError()
@@ -213,12 +261,12 @@ func Free(ptr unsafe.Pointer) {
 
 //export eventCallbackError
 func eventCallbackError(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
-	watcher := (*WinLogWatcher)(logWatcher)
-	watcher.publishError(fmt.Errorf("Event log callback got error: %v", GetLastError()))
+	watcher := (*logEventCallbackWrapper)(logWatcher).callback
+	watcher.PublishError(fmt.Errorf("Event log callback got error: %v", GetLastError()))
 }
 
 //export eventCallback
 func eventCallback(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
-	watcher := (*WinLogWatcher)(logWatcher)
-	watcher.publishEvent(uint64(handle))
+	watcher := (*logEventCallbackWrapper)(logWatcher).callback
+	watcher.PublishEvent(EventHandle(handle))
 }

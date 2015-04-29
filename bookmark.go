@@ -11,32 +11,34 @@ import (
 	"unsafe"
 )
 
-func CreateBookmark() (uint64, error) {
-	bookmark := uint64(C.CreateBookmark())
+type BookmarkHandle uint64
+
+func CreateBookmark() (BookmarkHandle, error) {
+	bookmark := BookmarkHandle(C.CreateBookmark())
 	if bookmark == 0 {
 		return 0, GetLastError()
 	}
 	return bookmark, nil
 }
 
-func CreateBookmarkFromXml(xmlString string) (uint64, error) {
+func CreateBookmarkFromXml(xmlString string) (BookmarkHandle, error) {
 	cString := C.CString(xmlString)
 	bookmark := C.CreateBookmarkFromXML(cString)
 	C.free(unsafe.Pointer(cString))
 	if bookmark == 0 {
 		return 0, GetLastError()
 	}
-	return uint64(bookmark), nil
+	return BookmarkHandle(bookmark), nil
 }
 
-func UpdateBookmark(bookmarkHandle, eventHandle uint64) error {
+func UpdateBookmark(bookmarkHandle BookmarkHandle, eventHandle EventHandle) error {
 	if C.UpdateBookmark(C.ULONGLONG(bookmarkHandle), C.ULONGLONG(eventHandle)) == 0 {
 		return GetLastError()
 	}
 	return nil
 }
 
-func RenderBookmark(bookmarkHandle uint64) (string, error) {
+func RenderBookmark(bookmarkHandle BookmarkHandle) (string, error) {
 	cString := C.RenderBookmark(C.ULONGLONG(bookmarkHandle))
 	if cString == nil {
 		return "", GetLastError()
