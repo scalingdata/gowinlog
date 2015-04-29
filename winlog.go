@@ -10,33 +10,33 @@ import (
 // Stores the common fields from a log event
 type WinLogEvent struct {
 	// From EvtRender
-	ProviderName string 
-	EventId      uint64 
-	Qualifiers   uint64 
-	Level        uint64 
-	Task         uint64 
-	Opcode       uint64 
-	Created      time.Time 
-	RecordId     uint64 
-	ProcessId    uint64 
-	ThreadId     uint64 
-	Channel      string 
-	ComputerName string 
-	Version      uint64 
+	ProviderName string
+	EventId      uint64
+	Qualifiers   uint64
+	Level        uint64
+	Task         uint64
+	Opcode       uint64
+	Created      time.Time
+	RecordId     uint64
+	ProcessId    uint64
+	ThreadId     uint64
+	Channel      string
+	ComputerName string
+	Version      uint64
 
 	// From EvtFormatMessage
-	Msg          string 
-	LevelText    string 
-	TaskText     string 
-	OpcodeText   string 
-	Keywords     []string 
-	ChannelText  string 
-	ProviderText string 
+	Msg          string
+	LevelText    string
+	TaskText     string
+	OpcodeText   string
+	Keywords     []string
+	ChannelText  string
+	ProviderText string
 	IdText       string
 }
 
 type channelWatcher struct {
-	bookmark    BookmarkHandle
+	bookmark     BookmarkHandle
 	subscription ListenerHandle
 }
 
@@ -139,27 +139,27 @@ func (self *WinLogWatcher) GetBookmark(channel string) (string, error) {
 }
 
 func (self *WinLogWatcher) removeSubscriptionLocked(channel string, watch *channelWatcher) (string, error) {
-  cancelErr := CancelEventHandle(uint64(watch.subscription))
-  closeErr := CloseEventHandle(uint64(watch.subscription))
-  bookmarkXml, bookmarkErr := RenderBookmark(watch.bookmark)
-  CloseEventHandle(uint64(watch.bookmark))
-  delete(self.watches, channel)
-  var err error
-  if cancelErr != nil {
-    err = cancelErr
-  } else if closeErr != nil {
-    err = closeErr
-  } else if bookmarkErr != nil {
-    err = bookmarkErr
-  }
-  return bookmarkXml, err
+	cancelErr := CancelEventHandle(uint64(watch.subscription))
+	closeErr := CloseEventHandle(uint64(watch.subscription))
+	bookmarkXml, bookmarkErr := RenderBookmark(watch.bookmark)
+	CloseEventHandle(uint64(watch.bookmark))
+	delete(self.watches, channel)
+	var err error
+	if cancelErr != nil {
+		err = cancelErr
+	} else if closeErr != nil {
+		err = closeErr
+	} else if bookmarkErr != nil {
+		err = bookmarkErr
+	}
+	return bookmarkXml, err
 }
 
 // Remove the subscription to a specific channel. Returns the XML bookmark
 // of the last event handled on the channel.
 func (self *WinLogWatcher) RemoveSubscription(channel string) (string, error) {
 	self.watchMutex.Lock()
-  defer self.watchMutex.Unlock()
+	defer self.watchMutex.Unlock()
 	watch, ok := self.watches[channel]
 	if !ok {
 		return "", fmt.Errorf("No watcher for %q", channel)
@@ -167,31 +167,31 @@ func (self *WinLogWatcher) RemoveSubscription(channel string) (string, error) {
 	return self.removeSubscriptionLocked(channel, watch)
 }
 
-// Remove all subscriptions from this watcher. Returns a map of channels to 
-// XML bookmarks, and a map of errors per channel. Each channel will be in 
+// Remove all subscriptions from this watcher. Returns a map of channels to
+// XML bookmarks, and a map of errors per channel. Each channel will be in
 // only one map.
 func (self *WinLogWatcher) RemoveAll() (map[string]string, map[string]error) {
-  updatedXml := make(map[string]string)
-  errors := make(map[string]error)
-  self.watchMutex.Lock()
-  defer self.watchMutex.Unlock()
-  for channel, watch := range self.watches {
-    xmlString, err := self.removeSubscriptionLocked(channel, watch)
-    if err != nil {
-      errors[channel] = err
-    } else {
-      updatedXml[channel] = xmlString
-    }
-  }
-  return updatedXml, errors
+	updatedXml := make(map[string]string)
+	errors := make(map[string]error)
+	self.watchMutex.Lock()
+	defer self.watchMutex.Unlock()
+	for channel, watch := range self.watches {
+		xmlString, err := self.removeSubscriptionLocked(channel, watch)
+		if err != nil {
+			errors[channel] = err
+		} else {
+			updatedXml[channel] = xmlString
+		}
+	}
+	return updatedXml, errors
 }
 
 // Close all go channels and remaining handles.
 // Must be called after RemoveAll.
 func (self *WinLogWatcher) Shutdown() {
-  CloseEventHandle(uint64(self.renderContext))
-  close(self.errChan)
-  close(self.eventChan)
+	CloseEventHandle(uint64(self.renderContext))
+	close(self.errChan)
+	close(self.eventChan)
 }
 
 func (self *WinLogWatcher) PublishError(err error) {
@@ -199,13 +199,13 @@ func (self *WinLogWatcher) PublishError(err error) {
 }
 
 func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error) {
-    renderedFields, err := RenderEventValues(self.renderContext, handle)
+	renderedFields, err := RenderEventValues(self.renderContext, handle)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to render event values: %v", err)
 	}
 
 	publisherHandle, err := GetEventPublisherHandle(renderedFields)
-	if err != nil{
+	if err != nil {
 		return nil, fmt.Errorf("Failed to render event values: %v", err)
 	}
 
@@ -258,7 +258,7 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error
 		ProviderText: providerText,
 		IdText:       idText,
 	}
-    return &event, nil
+	return &event, nil
 }
 
 func (self *WinLogWatcher) PublishEvent(handle EventHandle) {

@@ -13,6 +13,7 @@ import (
 )
 
 type EVT_VARIANT_TYPE int
+
 const (
 	EvtVarTypeNull = iota
 	EvtVarTypeString
@@ -42,6 +43,7 @@ const (
 
 /* Fields that can be rendered with GetRendered*Value */
 type EVT_SYSTEM_PROPERTY_ID int
+
 const (
 	EvtSystemProviderName = iota
 	EvtSystemProviderGuid
@@ -65,6 +67,7 @@ const (
 
 /* Formatting modes for GetFormattedMessage */
 type EVT_FORMAT_MESSAGE_FLAGS int
+
 const (
 	_ = iota
 	EvtFormatMessageEvent
@@ -85,8 +88,8 @@ type EventHandle uint64
 type RenderedFields unsafe.Pointer
 
 type LogEventCallback interface {
-  PublishError(error)
-  PublishEvent(EventHandle)
+	PublishError(error)
+	PublishEvent(EventHandle)
 }
 
 type logEventCallbackWrapper struct {
@@ -105,7 +108,7 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 }
 
 // Get a handle for a event log subscription on the given channel. Will begin at the
-// next event recieved on the channel after the subscription is registered. 
+// next event recieved on the channel after the subscription is registered.
 // The resulting handle must be closed with CloseEventHandle.
 func CreateListenerFromNow(channel string, watcher LogEventCallback) (ListenerHandle, error) {
 	cChan := C.CString(channel)
@@ -150,7 +153,7 @@ func RenderStringField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID)
 	return value, true
 }
 
-// Get the timestamp of the field at the given index. Returns false if the 
+// Get the timestamp of the field at the given index. Returns false if the
 // type of the field isn't EvtVarTypeFileTime.
 func RenderFileTimeField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (time.Time, bool) {
 	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
@@ -162,7 +165,7 @@ func RenderFileTimeField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_I
 }
 
 // Get the unsigned integer at the given index. Returns false if the field
-// type isn't EvtVarTypeByte, EvtVarTypeUInt16, EvtVarTypeUInt32, or EvtVarTypeUInt64. 
+// type isn't EvtVarTypeByte, EvtVarTypeUInt16, EvtVarTypeUInt32, or EvtVarTypeUInt64.
 func RenderUIntField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (uint64, bool) {
 	var field C.ULONGLONG
 	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
@@ -182,8 +185,8 @@ func RenderUIntField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (
 	return uint64(field), true
 }
 
-// Get the signed integer at the given index. Returns false if the type of 
-// the field isn't EvtVarTypeSByte, EvtVarTypeInt16, EvtVarTypeInt32, EvtVarTypeInt64. 
+// Get the signed integer at the given index. Returns false if the type of
+// the field isn't EvtVarTypeSByte, EvtVarTypeInt16, EvtVarTypeInt32, EvtVarTypeInt64.
 func RenderIntField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (int64, bool) {
 	var field C.LONGLONG
 	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
@@ -263,7 +266,7 @@ func Free(ptr unsafe.Pointer) {
 }
 
 /* Get the first event in the log, for testing */
-func getTestEventHandle() (EventHandle, error) { 
+func getTestEventHandle() (EventHandle, error) {
 	handle := C.GetTestEventHandle()
 	if handle == 0 {
 		return 0, GetLastError()
