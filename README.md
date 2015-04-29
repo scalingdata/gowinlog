@@ -1,6 +1,11 @@
 # gowinlog
 Go library for subscribing to the Windows Event Log.
 
+Installation
+=======
+
+gowinlog uses cgo, and requires `evt.h` on the lib path. Installing [MinGW-w64](http://mingw-w64.yaxm.org/doku.php) should satisfy both requirements. Make sure the Go architecture and GCC architecture are the same.
+
 Usage
 =======
 
