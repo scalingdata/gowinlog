@@ -49,4 +49,4 @@ func main() {
 Low-level API
 ------
 
-`evtRender.go` contains wrappers around the C events API. `bookmark.go` has wrappers around the bookmark API.
+`evt_render.go` contains wrappers around the C events API. `bookmark.go` has wrappers around the bookmark API.
