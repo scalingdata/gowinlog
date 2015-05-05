@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"gowinlog"
+	"github.com/scalingdata/gowinlog"
 )
 
 func main() {
@@ -11,7 +11,10 @@ func main() {
 		fmt.Printf("Couldn't create watcher: %v\n", err)
 		return
 	}
-	watcher.SubscribeFromNow("Application")
+	err = watcher.SubscribeFromNow("Application")
+	if err != nil {
+		fmt.Printf("Couldn't subscribe to Application: %v", err)
+	}
 	for {
 		select {
 		case evt := <-watcher.Event():

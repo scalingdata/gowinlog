@@ -15,7 +15,8 @@ import (
 type EVT_SUBSCRIBE_FLAGS int
 
 const (
-	EvtSubscribeToFutureEvents = iota
+	_ = iota
+	EvtSubscribeToFutureEvents
 	EvtSubscribeStartAtOldestRecord
 	EvtSubscribeStartAfterBookmark
 )
@@ -100,7 +101,7 @@ type LogEventCallback interface {
 	PublishEvent(EventHandle)
 }
 
-type logEventCallbackWrapper struct {
+type LogEventCallbackWrapper struct {
 	callback LogEventCallback
 }
 
@@ -117,10 +118,10 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 
 // Get a handle for a event log subscription on the given channel.
 // The resulting handle must be closed with CloseEventHandle.
-func CreateListener(channel string, startpos EVT_SUBSCRIBE_FLAGS, watcher LogEventCallback) (ListenerHandle, error) {
+func CreateListener(channel string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEventCallbackWrapper) (ListenerHandle, error) {
 	cChan := C.CString(channel)
-	wrapper := &logEventCallbackWrapper{watcher}
-	listenerHandle := C.CreateListener(cChan, C.int(startpos), C.PVOID(wrapper))
+	fmt.Printf("Creating listener on %v: %v", channel, startpos)
+	listenerHandle := C.CreateListener(cChan, C.int(startpos), C.PVOID(watcher))
 	C.free(unsafe.Pointer(cChan))
 	if listenerHandle == 0 {
 		return 0, GetLastError()
@@ -131,10 +132,9 @@ func CreateListener(channel string, startpos EVT_SUBSCRIBE_FLAGS, watcher LogEve
 // Get a handle for an event log subscription on the given channel. Will begin at the
 // bookmarked event, or the closest possible event if the log has been truncated.
 // The resulting handle must be closed with CloseEventHandle.
-func CreateListenerFromBookmark(channel string, watcher LogEventCallback, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
+func CreateListenerFromBookmark(channel string, watcher *LogEventCallbackWrapper, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
 	cChan := C.CString(channel)
-	wrapper := &logEventCallbackWrapper{watcher}
-	listenerHandle := C.CreateListenerFromBookmark(cChan, C.PVOID(wrapper), C.ULONGLONG(bookmarkHandle))
+	listenerHandle := C.CreateListenerFromBookmark(cChan, C.PVOID(watcher), C.ULONGLONG(bookmarkHandle))
 	C.free(unsafe.Pointer(cChan))
 	if listenerHandle == 0 {
 		return 0, GetLastError()
@@ -286,12 +286,12 @@ func getTestEventHandle() (EventHandle, error) {
 
 //export eventCallbackError
 func eventCallbackError(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
-	watcher := (*logEventCallbackWrapper)(logWatcher).callback
+	watcher := (*LogEventCallbackWrapper)(logWatcher).callback
 	watcher.PublishError(fmt.Errorf("Event log callback got error: %v", GetLastError()))
 }
 
 //export eventCallback
 func eventCallback(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
-	watcher := (*logEventCallbackWrapper)(logWatcher).callback
+	watcher := (*LogEventCallbackWrapper)(logWatcher).callback
 	watcher.PublishEvent(EventHandle(handle))
 }

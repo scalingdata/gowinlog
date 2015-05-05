@@ -38,6 +38,7 @@ type WinLogEvent struct {
 type channelWatcher struct {
 	bookmark     BookmarkHandle
 	subscription ListenerHandle
+	callback *LogEventCallbackWrapper
 }
 
 // Watches one or more event log channels
@@ -96,7 +97,8 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel string, flags EVT_SU
 	if err != nil {
 		return err
 	}
-	subscription, err := CreateListener(channel, flags, self)
+	callback := &LogEventCallbackWrapper{self}
+	subscription, err := CreateListener(channel, flags, callback)
 	if err != nil {
 		CloseEventHandle(uint64(newBookmark))
 		return err
@@ -104,6 +106,7 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel string, flags EVT_SU
 	self.watches[channel] = &channelWatcher{
 		bookmark:     newBookmark,
 		subscription: subscription,
+		callback: callback,
 	}
 	return nil
 }
@@ -120,7 +123,8 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel string, xmlString strin
 	if err != nil {
 		return err
 	}
-	subscription, err := CreateListenerFromBookmark(channel, self, bookmark)
+	callback := &LogEventCallbackWrapper{self}
+	subscription, err := CreateListenerFromBookmark(channel, callback, bookmark)
 	if err != nil {
 		CloseEventHandle(uint64(bookmark))
 		return err
@@ -128,6 +132,7 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel string, xmlString strin
 	self.watches[channel] = &channelWatcher{
 		bookmark:     bookmark,
 		subscription: subscription,
+		callback: callback,
 	}
 	return nil
 }
