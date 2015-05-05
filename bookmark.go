@@ -1,3 +1,5 @@
+// +build windows
+
 package winlog
 
 /*
@@ -8,8 +10,6 @@ import "C"
 import (
 	"unsafe"
 )
-
-type BookmarkHandle uint64
 
 func CreateBookmark() (BookmarkHandle, error) {
 	bookmark := BookmarkHandle(C.CreateBookmark())

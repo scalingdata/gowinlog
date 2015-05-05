@@ -1,3 +1,5 @@
+// +build windows
+
 package winlog
 
 /*
@@ -89,21 +91,6 @@ const (
 	EvtFormatMessageId
 	EvtFormatMessageXml
 )
-
-type SysRenderContext uint64
-type ListenerHandle uint64
-type PublisherHandle uint64
-type EventHandle uint64
-type RenderedFields unsafe.Pointer
-
-type LogEventCallback interface {
-	PublishError(error)
-	PublishEvent(EventHandle)
-}
-
-type LogEventCallbackWrapper struct {
-	callback LogEventCallback
-}
 
 // Get a handle to a render context which will render properties from the System element.
 // Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting

@@ -1,3 +1,5 @@
+// +build windows
+
 #include "bookmark.h"
 
 ULONGLONG CreateBookmark() {

@@ -1,3 +1,5 @@
+// +build windows
+
 #define _WIN32_WINNT 0x0602
 
 #include "evt.h"

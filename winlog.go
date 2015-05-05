@@ -1,57 +1,11 @@
+// +build windows
+
 package winlog
 
 import (
 	"fmt"
-	"sync"
-	"time"
 	"unsafe"
 )
-
-// Stores the common fields from a log event
-type WinLogEvent struct {
-	// From EvtRender
-	ProviderName string
-	EventId      uint64
-	Qualifiers   uint64
-	Level        uint64
-	Task         uint64
-	Opcode       uint64
-	Created      time.Time
-	RecordId     uint64
-	ProcessId    uint64
-	ThreadId     uint64
-	Channel      string
-	ComputerName string
-	Version      uint64
-
-	// From EvtFormatMessage
-	Msg          string
-	LevelText    string
-	TaskText     string
-	OpcodeText   string
-	Keywords     []string
-	ChannelText  string
-	ProviderText string
-	IdText       string
-}
-
-type channelWatcher struct {
-	bookmark     BookmarkHandle
-	subscription ListenerHandle
-	callback *LogEventCallbackWrapper
-}
-
-// Watches one or more event log channels
-// and publishes events and errors to Go
-// channels
-type WinLogWatcher struct {
-	errChan   chan error
-	eventChan chan *WinLogEvent
-
-	renderContext SysRenderContext
-	watches       map[string]*channelWatcher
-	watchMutex    sync.Mutex
-}
 
 func (self *WinLogWatcher) Event() <-chan *WinLogEvent {
 	return self.eventChan
