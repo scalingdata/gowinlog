@@ -95,7 +95,7 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel string, flags EVT_SU
 	}
 	newBookmark, err := CreateBookmark()
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to create new bookmark handle: %v", err)
 	}
 	callback := &LogEventCallbackWrapper{self}
 	subscription, err := CreateListener(channel, flags, callback)
@@ -121,13 +121,13 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel string, xmlString strin
 	}
 	bookmark, err := CreateBookmarkFromXml(xmlString)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to create bookmark from XML: %v", err)
 	}
 	callback := &LogEventCallbackWrapper{self}
 	subscription, err := CreateListenerFromBookmark(channel, callback, bookmark)
 	if err != nil {
 		CloseEventHandle(uint64(bookmark))
-		return err
+		return fmt.Errorf("Failed to add listener: %v", err)
 	}
 	self.watches[channel] = &channelWatcher{
 		bookmark:     bookmark,

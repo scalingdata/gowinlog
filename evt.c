@@ -181,7 +181,7 @@ ULONGLONG CreateListener(char* channel, int startPos, PVOID pWatcher) {
 }
 
 ULONGLONG CreateListenerFromBookmark(char* channel, PVOID pWatcher, ULONGLONG hBookmark) {
-	return SetupListener(channel, pWatcher, NULL, EvtSubscribeStartAfterBookmark);
+	return SetupListener(channel, pWatcher, (EVT_HANDLE)hBookmark, EvtSubscribeStartAfterBookmark);
 }
 
 ULONGLONG GetTestEventHandle() {
