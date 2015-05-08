@@ -22,8 +22,8 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
 		return nil, err
 	}
 	return &WinLogWatcher{
-		errChan:       make(chan error, 1),
-		eventChan:     make(chan *WinLogEvent, 1),
+		errChan:       make(chan error),
+		eventChan:     make(chan *WinLogEvent),
 		renderContext: cHandle,
 		watches:       make(map[string]*channelWatcher),
 	}, nil
