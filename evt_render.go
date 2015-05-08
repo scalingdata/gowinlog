@@ -107,7 +107,6 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 // The resulting handle must be closed with CloseEventHandle.
 func CreateListener(channel string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEventCallbackWrapper) (ListenerHandle, error) {
 	cChan := C.CString(channel)
-	fmt.Printf("Creating listener on %v: %v", channel, startpos)
 	listenerHandle := C.CreateListener(cChan, C.int(startpos), C.PVOID(watcher))
 	C.free(unsafe.Pointer(cChan))
 	if listenerHandle == 0 {

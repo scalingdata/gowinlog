@@ -112,7 +112,9 @@ func (self *WinLogWatcher) removeSubscriptionLocked(channel string, watch *chann
 	closeErr := CloseEventHandle(uint64(watch.subscription))
 	bookmarkXml, bookmarkErr := RenderBookmark(watch.bookmark)
 	CloseEventHandle(uint64(watch.bookmark))
+	self.watchMutex.Lock()
 	delete(self.watches, channel)
+	self.watchMutex.Unlock()
 	var err error
 	if cancelErr != nil {
 		err = cancelErr
@@ -128,8 +130,8 @@ func (self *WinLogWatcher) removeSubscriptionLocked(channel string, watch *chann
 // of the last event handled on the channel.
 func (self *WinLogWatcher) RemoveSubscription(channel string) (string, error) {
 	self.watchMutex.Lock()
-	defer self.watchMutex.Unlock()
 	watch, ok := self.watches[channel]
+	self.watchMutex.Unlock()
 	if !ok {
 		return "", fmt.Errorf("No watcher for %q", channel)
 	}
@@ -143,8 +145,9 @@ func (self *WinLogWatcher) RemoveAll() (map[string]string, map[string]error) {
 	updatedXml := make(map[string]string)
 	errors := make(map[string]error)
 	self.watchMutex.Lock()
-	defer self.watchMutex.Unlock()
-	for channel, watch := range self.watches {
+	watches := self.watches
+	self.watchMutex.Unlock()
+	for channel, watch := range watches {
 		xmlString, err := self.removeSubscriptionLocked(channel, watch)
 		if err != nil {
 			errors[channel] = err
@@ -236,14 +239,16 @@ func (self *WinLogWatcher) PublishEvent(handle EventHandle) {
 		self.PublishError(err)
 		return
 	}
+
 	self.eventChan <- event
 
 	self.watchMutex.Lock()
-	defer self.watchMutex.Unlock()
 	watch, ok := self.watches[event.Channel]
 	if !ok {
+		self.watchMutex.Unlock()
 		self.errChan <- fmt.Errorf("No handle for channel bookmark %q", event.Channel)
 		return
 	}
 	UpdateBookmark(watch.bookmark, handle)
+	self.watchMutex.Unlock()
 }
