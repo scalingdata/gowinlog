@@ -16,7 +16,7 @@ package main
 
 import (
   "fmt"
-  "gowinlog"
+  "github.com/scalingdata/gowinlog"
 )
 
 func main() {
