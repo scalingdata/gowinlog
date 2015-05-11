@@ -22,6 +22,7 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
 		return nil, err
 	}
 	return &WinLogWatcher{
+		shutdown: make(chan interface{}),
 		errChan:       make(chan error),
 		eventChan:     make(chan *WinLogEvent),
 		renderContext: cHandle,
@@ -126,27 +127,16 @@ func (self *WinLogWatcher) removeSubscriptionLocked(channel string, watch *chann
 	return bookmarkXml, err
 }
 
-// Remove the subscription to a specific channel. Returns the XML bookmark
-// of the last event handled on the channel.
-func (self *WinLogWatcher) RemoveSubscription(channel string) (string, error) {
-	self.watchMutex.Lock()
-	watch, ok := self.watches[channel]
-	self.watchMutex.Unlock()
-	if !ok {
-		return "", fmt.Errorf("No watcher for %q", channel)
-	}
-	return self.removeSubscriptionLocked(channel, watch)
-}
-
-// Remove all subscriptions from this watcher. Returns a map of channels to
-// XML bookmarks, and a map of errors per channel. Each channel will be in
-// only one map.
-func (self *WinLogWatcher) RemoveAll() (map[string]string, map[string]error) {
+// Remove all subscriptions from this watcher and shut down. Returns a map
+// of channels to XML bookmarks, and a map of errors per channel. Each 
+// channel will be in only one map.
+func (self *WinLogWatcher) Shutdown() (map[string]string, map[string]error) {
 	updatedXml := make(map[string]string)
 	errors := make(map[string]error)
 	self.watchMutex.Lock()
 	watches := self.watches
 	self.watchMutex.Unlock()
+	close(self.shutdown)
 	for channel, watch := range watches {
 		xmlString, err := self.removeSubscriptionLocked(channel, watch)
 		if err != nil {
@@ -155,15 +145,10 @@ func (self *WinLogWatcher) RemoveAll() (map[string]string, map[string]error) {
 			updatedXml[channel] = xmlString
 		}
 	}
-	return updatedXml, errors
-}
-
-// Close all go channels and remaining handles.
-// Must be called after RemoveAll.
-func (self *WinLogWatcher) Shutdown() {
 	CloseEventHandle(uint64(self.renderContext))
 	close(self.errChan)
 	close(self.eventChan)
+	return updatedXml, errors
 }
 
 func (self *WinLogWatcher) PublishError(err error) {
@@ -240,7 +225,11 @@ func (self *WinLogWatcher) PublishEvent(handle EventHandle) {
 		return
 	}
 
-	self.eventChan <- event
+  select {
+	case self.eventChan <- event:
+	case <- self.shutdown:
+		return
+	}
 
 	self.watchMutex.Lock()
 	watch, ok := self.watches[event.Channel]

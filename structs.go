@@ -50,6 +50,7 @@ type WinLogWatcher struct {
 	renderContext SysRenderContext
 	watches       map[string]*channelWatcher
 	watchMutex    sync.Mutex
+	shutdown chan interface{}
 }
 
 type SysRenderContext uint64
