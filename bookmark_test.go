@@ -119,7 +119,7 @@ func BenchmarkBookmark(b *B) {
 		b.Fatal(err)
 	}
 	defer CloseEventHandle(uint64(bookmark))
-	for i :=0; i < b.N; i++ {
+	for i := 0; i < b.N; i++ {
 		event, err := getTestEventHandle()
 		if err != nil {
 			b.Fatal(err)
@@ -143,7 +143,7 @@ func BenchmarkNoBookmark(b *B) {
 		b.Fatal(err)
 	}
 	defer CloseEventHandle(uint64(bookmark))
-	for i :=0; i < b.N; i++ {
+	for i := 0; i < b.N; i++ {
 		event, err := getTestEventHandle()
 		if err != nil {
 			b.Fatal(err)

@@ -1,9 +1,9 @@
 package winlog
 
 import (
-  "sync"
-  "time"
-  "unsafe"
+	"sync"
+	"time"
+	"unsafe"
 )
 
 // Stores the common fields from a log event
@@ -33,17 +33,14 @@ type WinLogEvent struct {
 	ProviderText string
 	IdText       string
 
-	// internal fields
-	bookmarkText string
-}
-
-func (self *WinLogEvent) GetBookmark() string {
-  return self.bookmarkText
+	// Serialied XML bookmark to
+	// restart at this event
+	Bookmark string
 }
 
 type channelWatcher struct {
 	subscription ListenerHandle
-	callback *LogEventCallbackWrapper
+	callback     *LogEventCallbackWrapper
 	bookmark     BookmarkHandle
 }
 
@@ -57,7 +54,7 @@ type WinLogWatcher struct {
 	renderContext SysRenderContext
 	watches       map[string]*channelWatcher
 	watchMutex    sync.Mutex
-	shutdown chan interface{}
+	shutdown      chan interface{}
 }
 
 type SysRenderContext uint64

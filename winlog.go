@@ -22,7 +22,7 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
 		return nil, err
 	}
 	return &WinLogWatcher{
-		shutdown: make(chan interface{}),
+		shutdown:      make(chan interface{}),
 		errChan:       make(chan error),
 		eventChan:     make(chan *WinLogEvent),
 		renderContext: cHandle,
@@ -61,7 +61,7 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel string, flags EVT_SU
 	self.watches[channel] = &channelWatcher{
 		bookmark:     newBookmark,
 		subscription: subscription,
-		callback: callback,
+		callback:     callback,
 	}
 	return nil
 }
@@ -87,7 +87,7 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel string, xmlString strin
 	self.watches[channel] = &channelWatcher{
 		bookmark:     bookmark,
 		subscription: subscription,
-		callback: callback,
+		callback:     callback,
 	}
 	return nil
 }
@@ -195,8 +195,8 @@ func (self *WinLogWatcher) PublishEvent(handle EventHandle) {
 		return
 	}
 
-  // Get the bookmark for the channel
-  self.watchMutex.Lock()
+	// Get the bookmark for the channel
+	self.watchMutex.Lock()
 	watch, ok := self.watches[event.Channel]
 	self.watchMutex.Unlock()
 	if !ok {
@@ -204,21 +204,21 @@ func (self *WinLogWatcher) PublishEvent(handle EventHandle) {
 		return
 	}
 
-  // Update the bookmark with the current event
+	// Update the bookmark with the current event
 	UpdateBookmark(watch.bookmark, handle)
 
-  // Serialize the boomark as XML and include it in the event
+	// Serialize the boomark as XML and include it in the event
 	bookmarkXml, err := RenderBookmark(watch.bookmark)
 	if err != nil {
-    self.PublishError(fmt.Errorf("Error rendering bookmark for event - %v", err))
-    return
+		self.PublishError(fmt.Errorf("Error rendering bookmark for event - %v", err))
+		return
 	}
-  event.bookmarkText = bookmarkXml
+	event.Bookmark = bookmarkXml
 
-  // Don't block when shutting down if the consumer has gone away
-  select {
+	// Don't block when shutting down if the consumer has gone away
+	select {
 	case self.eventChan <- event:
-	case <- self.shutdown:
+	case <-self.shutdown:
 		return
 	}
 
