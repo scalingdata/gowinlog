@@ -4,12 +4,12 @@ Go library for subscribing to the Windows Event Log.
 Installation
 =======
 
-gowinlog uses cgo, and requires `evt.h` on the lib path. Installing [MinGW-w64](http://mingw-w64.yaxm.org/doku.php) should satisfy both requirements. Make sure the Go architecture and GCC architecture are the same.
+gowinlog uses cgo, so it needs gcc, and `evt.h` must be available. Installing [MinGW-w64](http://mingw-w64.yaxm.org/doku.php) should satisfy both requirements. Make sure the Go architecture and GCC architecture are the same.
 
 Usage
 =======
 
-In Go, create a watcher and subscribe to some log channels. Events and errors are coerced into Go structs and published on the `Event()` and `Error()` channels. Every channel maintains a bookmark which can be stored and used to resume processing at the last message. 
+In Go, create a watcher and subscribe to some log channels. Subscriptions can start at the beginning of the log, at the most recent event, or at a bookmark. Events and errors are coerced into Go structs and published on the `Event()` and `Error()` channels. Every event includes a `Bookmark` field which can be stored and used to resume processing at the same point.
 
 ``` Go
 package main
@@ -33,12 +33,7 @@ func main() {
       // Print the event struct
       fmt.Printf("Event: %v\n", evt)
       // Print the updated bookmark for that channel
-      bookmark, err := watcher.GetBookmark("Application")
-      if err != nil {
-        fmt.Printf("Error getting bookmark: %v", err)
-        continue
-      }
-      fmt.Printf("Bookmark XML: %v\n", bookmark)
+      fmt.Printf("Bookmark XML: %v\n", evt.Bookmark)
     case err := <- watcher.Error():
       fmt.Printf("Error: %v\n\n", err)
     }
@@ -49,4 +44,4 @@ func main() {
 Low-level API
 ------
 
-`evt_render.go` contains wrappers around the C events API. `bookmark.go` has wrappers around the bookmark API.
+`event.go` contains wrappers around the C events API. `bookmark.go` has wrappers around the bookmark API.
