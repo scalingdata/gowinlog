@@ -74,11 +74,11 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel string, xmlString strin
 	if _, ok := self.watches[channel]; ok {
 		return fmt.Errorf("A watcher for channel %q already exists", channel)
 	}
+	callback := &LogEventCallbackWrapper{self}
 	bookmark, err := CreateBookmarkFromXml(xmlString)
 	if err != nil {
-		return fmt.Errorf("Failed to create bookmark from XML: %v", err)
+		return fmt.Errorf("Failed to create new bookmark handle: %v", err)
 	}
-	callback := &LogEventCallbackWrapper{self}
 	subscription, err := CreateListenerFromBookmark(channel, callback, bookmark)
 	if err != nil {
 		CloseEventHandle(uint64(bookmark))
@@ -92,63 +92,31 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel string, xmlString strin
 	return nil
 }
 
-// Get an XML bookmark that represents the last event published to
-// the Events channel for the specified log channel.
-func (self *WinLogWatcher) GetBookmark(channel string) (string, error) {
-	self.watchMutex.Lock()
-	watch, ok := self.watches[channel]
-	self.watchMutex.Unlock()
-	if !ok {
-		return "", fmt.Errorf("No bookmark for %v exists", channel)
-	}
-	bookmarkXml, err := RenderBookmark(watch.bookmark)
-	if err != nil {
-		return "", err
-	}
-	return bookmarkXml, nil
-}
-
-func (self *WinLogWatcher) removeSubscriptionLocked(channel string, watch *channelWatcher) (string, error) {
+func (self *WinLogWatcher) removeSubscription(channel string, watch *channelWatcher) error {
 	cancelErr := CancelEventHandle(uint64(watch.subscription))
 	closeErr := CloseEventHandle(uint64(watch.subscription))
-	bookmarkXml, bookmarkErr := RenderBookmark(watch.bookmark)
 	CloseEventHandle(uint64(watch.bookmark))
 	self.watchMutex.Lock()
 	delete(self.watches, channel)
 	self.watchMutex.Unlock()
-	var err error
 	if cancelErr != nil {
-		err = cancelErr
-	} else if closeErr != nil {
-		err = closeErr
-	} else if bookmarkErr != nil {
-		err = bookmarkErr
+		return cancelErr
 	}
-	return bookmarkXml, err
+	return closeErr
 }
 
-// Remove all subscriptions from this watcher and shut down. Returns a map
-// of channels to XML bookmarks, and a map of errors per channel. Each 
-// channel will be in only one map.
-func (self *WinLogWatcher) Shutdown() (map[string]string, map[string]error) {
-	updatedXml := make(map[string]string)
-	errors := make(map[string]error)
+// Remove all subscriptions from this watcher and shut down.
+func (self *WinLogWatcher) Shutdown() {
 	self.watchMutex.Lock()
 	watches := self.watches
 	self.watchMutex.Unlock()
 	close(self.shutdown)
 	for channel, watch := range watches {
-		xmlString, err := self.removeSubscriptionLocked(channel, watch)
-		if err != nil {
-			errors[channel] = err
-		} else {
-			updatedXml[channel] = xmlString
-		}
+		self.removeSubscription(channel, watch)
 	}
 	CloseEventHandle(uint64(self.renderContext))
 	close(self.errChan)
 	close(self.eventChan)
-	return updatedXml, errors
 }
 
 func (self *WinLogWatcher) PublishError(err error) {
@@ -219,25 +187,39 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error
 }
 
 func (self *WinLogWatcher) PublishEvent(handle EventHandle) {
+
+	// Convert the event from the event log schema
 	event, err := self.convertEvent(handle)
 	if err != nil {
 		self.PublishError(err)
 		return
 	}
 
+  // Get the bookmark for the channel
+  self.watchMutex.Lock()
+	watch, ok := self.watches[event.Channel]
+	self.watchMutex.Unlock()
+	if !ok {
+		self.errChan <- fmt.Errorf("No handle for channel bookmark %q", event.Channel)
+		return
+	}
+
+  // Update the bookmark with the current event
+	UpdateBookmark(watch.bookmark, handle)
+
+  // Serialize the boomark as XML and include it in the event
+	bookmarkXml, err := RenderBookmark(watch.bookmark)
+	if err != nil {
+    self.PublishError(fmt.Errorf("Error rendering bookmark for event - %v", err))
+    return
+	}
+  event.bookmarkText = bookmarkXml
+
+  // Don't block when shutting down if the consumer has gone away
   select {
 	case self.eventChan <- event:
 	case <- self.shutdown:
 		return
 	}
 
-	self.watchMutex.Lock()
-	watch, ok := self.watches[event.Channel]
-	if !ok {
-		self.watchMutex.Unlock()
-		self.errChan <- fmt.Errorf("No handle for channel bookmark %q", event.Channel)
-		return
-	}
-	UpdateBookmark(watch.bookmark, handle)
-	self.watchMutex.Unlock()
 }

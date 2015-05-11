@@ -111,3 +111,47 @@ func TestUpdateInvalidBookmark(t *T) {
 		t.Fatal("No error when updating bookmark with invalid handle")
 	}
 }
+
+func BenchmarkBookmark(b *B) {
+	// Create a bookmark and update it with an event
+	bookmark, err := CreateBookmark()
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer CloseEventHandle(uint64(bookmark))
+	for i :=0; i < b.N; i++ {
+		event, err := getTestEventHandle()
+		if err != nil {
+			b.Fatal(err)
+		}
+		err = UpdateBookmark(bookmark, event)
+		if err != nil {
+			b.Fatal(err)
+		}
+		_, err = RenderBookmark(bookmark)
+		if err != nil {
+			b.Fatal(err)
+		}
+		CloseEventHandle(uint64(event))
+	}
+}
+
+func BenchmarkNoBookmark(b *B) {
+	// Create a bookmark and update it with an event
+	bookmark, err := CreateBookmark()
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer CloseEventHandle(uint64(bookmark))
+	for i :=0; i < b.N; i++ {
+		event, err := getTestEventHandle()
+		if err != nil {
+			b.Fatal(err)
+		}
+		err = UpdateBookmark(bookmark, event)
+		if err != nil {
+			b.Fatal(err)
+		}
+		CloseEventHandle(uint64(event))
+	}
+}

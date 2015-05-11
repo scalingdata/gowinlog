@@ -4,7 +4,7 @@ package winlog
 
 /*
 #cgo LDFLAGS: -l wevtapi
-#include "evt.h"
+#include "event.h"
 */
 import "C"
 import (

@@ -32,12 +32,19 @@ type WinLogEvent struct {
 	ChannelText  string
 	ProviderText string
 	IdText       string
+
+	// internal fields
+	bookmarkText string
+}
+
+func (self *WinLogEvent) GetBookmark() string {
+  return self.bookmarkText
 }
 
 type channelWatcher struct {
-	bookmark     BookmarkHandle
 	subscription ListenerHandle
 	callback *LogEventCallbackWrapper
+	bookmark     BookmarkHandle
 }
 
 // Watches one or more event log channels

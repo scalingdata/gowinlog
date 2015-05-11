@@ -2,7 +2,7 @@
 
 #define _WIN32_WINNT 0x0602
 
-#include "evt.h"
+#include "event.h"
 #include "_cgo_export.h"
 
 int CloseEvtHandle(ULONGLONG hEvent) {
