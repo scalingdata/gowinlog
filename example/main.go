@@ -19,7 +19,7 @@ func main() {
 		select {
 		case evt := <-watcher.Event():
 			fmt.Printf("Event: %v\n", evt)
-			bookmark := evt.GetBookmark()
+			bookmark := evt.Bookmark
 			fmt.Printf("Bookmark: %v\n", bookmark)
 		case err := <-watcher.Error():
 			fmt.Printf("Error: %v\n\n", err)

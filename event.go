@@ -95,8 +95,19 @@ const (
 // Get a handle to a render context which will render properties from the System element.
 // Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting
 // handle must be closed with CloseEventHandle.
-func GetSystemRenderContext() (SysRenderContext, error) {
-	context := SysRenderContext(C.CreateSystemRenderContext())
+func GetSystemRenderContext() (RenderContext, error) {
+	context := RenderContext(C.CreateSystemRenderContext())
+	if context == 0 {
+		return 0, GetLastError()
+	}
+	return context, nil
+}
+
+// Get a handle to a render context which will render properties from the UserData or EventData element.
+// Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting
+// handle must be closed with CloseEventHandle.
+func GetUserRenderContext() (RenderContext, error) {
+	context := RenderContext(C.CreateUserRenderContext())
 	if context == 0 {
 		return 0, GetLastError()
 	}
@@ -130,13 +141,13 @@ func CreateListenerFromBookmark(channel string, watcher *LogEventCallbackWrapper
 
 // Get the Go string for the field at the given index. Returns
 // false if the type of the field isn't EvtVarTypeString.
-func RenderStringField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (string, bool) {
-	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
+func RenderStringField(fields RenderedFields, fieldIndex int) (string, bool) {
+	fieldType := C.GetRenderedValueType((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	if fieldType != EvtVarTypeString {
 		return "", false
 	}
 
-	cString := C.GetRenderedStringValue(C.PVOID(fields), C.int(fieldIndex))
+	cString := C.GetRenderedStringValue((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	if cString == nil {
 		return "", false
 	}
@@ -148,29 +159,29 @@ func RenderStringField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID)
 
 // Get the timestamp of the field at the given index. Returns false if the
 // type of the field isn't EvtVarTypeFileTime.
-func RenderFileTimeField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (time.Time, bool) {
-	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
+func RenderFileTimeField(fields RenderedFields, fieldIndex int) (time.Time, bool) {
+	fieldType := C.GetRenderedValueType((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	if fieldType != EvtVarTypeFileTime {
 		return time.Time{}, false
 	}
-	field := C.GetRenderedFileTimeValue(C.PVOID(fields), C.int(fieldIndex))
+	field := C.GetRenderedFileTimeValue((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	return time.Unix(int64(field), 0), true
 }
 
 // Get the unsigned integer at the given index. Returns false if the field
 // type isn't EvtVarTypeByte, EvtVarTypeUInt16, EvtVarTypeUInt32, or EvtVarTypeUInt64.
-func RenderUIntField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (uint64, bool) {
+func RenderUIntField(fields RenderedFields, fieldIndex int) (uint64, bool) {
 	var field C.ULONGLONG
-	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
+	fieldType := C.GetRenderedValueType((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	switch fieldType {
 	case EvtVarTypeByte:
-		field = C.GetRenderedByteValue(C.PVOID(fields), C.int(fieldIndex))
+		field = C.GetRenderedByteValue((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	case EvtVarTypeUInt16:
-		field = C.GetRenderedUInt16Value(C.PVOID(fields), C.int(fieldIndex))
+		field = C.GetRenderedUInt16Value((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	case EvtVarTypeUInt32:
-		field = C.GetRenderedUInt32Value(C.PVOID(fields), C.int(fieldIndex))
+		field = C.GetRenderedUInt32Value((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	case EvtVarTypeUInt64:
-		field = C.GetRenderedUInt64Value(C.PVOID(fields), C.int(fieldIndex))
+		field = C.GetRenderedUInt64Value((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	default:
 		return 0, false
 	}
@@ -180,23 +191,52 @@ func RenderUIntField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (
 
 // Get the signed integer at the given index. Returns false if the type of
 // the field isn't EvtVarTypeSByte, EvtVarTypeInt16, EvtVarTypeInt32, EvtVarTypeInt64.
-func RenderIntField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_ID) (int64, bool) {
+func RenderIntField(fields RenderedFields, fieldIndex int) (int64, bool) {
 	var field C.LONGLONG
-	fieldType := C.GetRenderedValueType(C.PVOID(fields), C.int(fieldIndex))
+	fieldType := C.GetRenderedValueType((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	switch fieldType {
 	case EvtVarTypeSByte:
-		field = C.GetRenderedSByteValue(C.PVOID(fields), C.int(fieldIndex))
+		field = C.GetRenderedSByteValue((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	case EvtVarTypeInt16:
-		field = C.GetRenderedInt16Value(C.PVOID(fields), C.int(fieldIndex))
+		field = C.GetRenderedInt16Value((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	case EvtVarTypeInt32:
-		field = C.GetRenderedInt32Value(C.PVOID(fields), C.int(fieldIndex))
+		field = C.GetRenderedInt32Value((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	case EvtVarTypeInt64:
-		field = C.GetRenderedInt64Value(C.PVOID(fields), C.int(fieldIndex))
+		field = C.GetRenderedInt64Value((*C.RenderedFields)(fields).fields, C.int(fieldIndex))
 	default:
 		return 0, false
 	}
 
 	return int64(field), true
+}
+
+// Get a field of an unknown type, and render it as a string
+func GetRenderedFieldAsString(renderedFields RenderedFields, fieldIndex int) (string) {
+	fieldType := C.GetRenderedValueType((*C.RenderedFields)(renderedFields).fields, C.int(fieldIndex))
+	var value interface{}
+  if fieldType == EvtVarTypeSByte || fieldType == EvtVarTypeInt16 || fieldType == EvtVarTypeInt32 || fieldType == EvtVarTypeInt64 {
+  	value, _ = RenderIntField(renderedFields, fieldIndex)
+  } else if fieldType == EvtVarTypeByte || fieldType == EvtVarTypeUInt16 || fieldType == EvtVarTypeUInt32 || fieldType == EvtVarTypeUInt64 {
+  	value, _ = RenderUIntField(renderedFields, fieldIndex)
+  } else if fieldType == EvtVarTypeString {
+  	value, _ = RenderStringField(renderedFields, fieldIndex)
+  } else if fieldType == EvtVarTypeFileTime {
+  	value, _ = RenderFileTimeField(renderedFields, fieldIndex)
+  } else {
+  	value = ""
+  }
+  return fmt.Sprintf("%v", value)
+}
+
+func RenderAllFieldsAsStrings(renderedFields RenderedFields) ([]string) {
+  fieldCount := (*C.RenderedFields)(renderedFields).nFields
+  fieldStrings := make([]string, 0, fieldCount)
+
+  for i := 0 ; i < int(fieldCount); i++ {
+    fieldStrings = append(fieldStrings, GetRenderedFieldAsString(renderedFields, i))
+  }
+
+  return fieldStrings
 }
 
 // Get the formatted string that represents this message. This method wraps EvtFormatMessage.
@@ -218,24 +258,32 @@ func GetLastError() error {
 	return err
 }
 
-// Render the system properties from the event and returns an array of properties.
+// Render the properties from the event and returns an array of properties.
 // Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
 // or RenderUIntField depending on type. This buffer must be freed after use.
-func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) (RenderedFields, error) {
-	values := RenderedFields(C.RenderEventValues(C.ULONGLONG(renderContext), C.ULONGLONG(eventHandle)))
+func RenderEventValues(renderContext RenderContext, eventHandle EventHandle) (RenderedFields, error) {
+	values := C.RenderEventValues(C.ULONGLONG(renderContext), C.ULONGLONG(eventHandle))
 	if values == nil {
 		return nil, GetLastError()
 	}
-	return values, nil
+	return RenderedFields(values), nil
 }
 
 // Get a handle that represents the publisher of the event, given the rendered event values.
 func GetEventPublisherHandle(renderedFields RenderedFields) (PublisherHandle, error) {
-	handle := PublisherHandle(C.GetEventPublisherHandle(C.PVOID(renderedFields)))
+	fields := C.PVOID((*C.RenderedFields)(renderedFields).fields)
+	handle := PublisherHandle(C.GetEventPublisherHandle(fields))
 	if handle == 0 {
 		return 0, GetLastError()
 	}
 	return handle, nil
+}
+
+// Free the inner array, and then the wrapper struct
+func FreeRenderedFields(renderedFields RenderedFields) {
+	fields := unsafe.Pointer((*C.RenderedFields)(renderedFields).fields)
+	C.free(fields)
+	C.free(unsafe.Pointer(renderedFields))
 }
 
 // Close an event handle.

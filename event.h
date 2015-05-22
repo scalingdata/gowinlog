@@ -4,6 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef GOWINLOG_H
+#define GOWINLOG_H
+
+typedef struct renderedFields {
+  PVOID fields;
+  unsigned long nFields;
+} RenderedFields;
+
 /* Handles really should be EVT_HANDLE, but Go will sometimes
    try to check if pointers are valid, and handles aren't necessarily
    pointers (although they have type PVOID). So we pass handles to Go as
@@ -25,7 +33,7 @@ char* GetLastErrorString();
 // Render the fields for the given context. Allocates an array
 // of values based on the context, these can be accessed using
 // GetRendered<type>Value. Buffer must be freed by the caller.
-PVOID RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent);
+RenderedFields* RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent);
 
 // Get the type of the variable at the given index in the array.
 // Possible types are EvtVarType*
@@ -65,5 +73,11 @@ int CancelEvtHandle(ULONGLONG hEvent);
 // EvtSystem*
 ULONGLONG CreateSystemRenderContext();
 
+// Create a context for RenderEventValues that decodes event specific data.
+// Properties in the resulting array can be iterated over.
+ULONGLONG CreateUserRenderContext();
+
 // For testing, get a handle on the first event in the log
 ULONGLONG GetTestEventHandle();
+
+#endif /* GOWINLOG_H */

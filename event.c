@@ -13,7 +13,7 @@ int CancelEvtHandle(ULONGLONG hEvent) {
 	EvtCancel((EVT_HANDLE)hEvent);
 }
 
-PVOID RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent) {
+RenderedFields* RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent) {
 	DWORD dwBufferSize = 0;
 	DWORD dwUsed = 0;
 	DWORD dwPropertyCount = 0;
@@ -29,7 +29,14 @@ PVOID RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent) {
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		return NULL;
 	}
-	return pRenderedValues;
+	RenderedFields* rf = malloc(sizeof(RenderedFields));
+	if (!rf) {
+		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		return NULL;
+	}
+	rf->fields = pRenderedValues;
+	rf->nFields = dwPropertyCount;
+	return rf;
 }
 
 char* GetLastErrorString() {
@@ -78,6 +85,10 @@ ULONGLONG GetEventPublisherHandle(PVOID pRenderedValues) {
 
 ULONGLONG CreateSystemRenderContext() {
 	return (ULONGLONG)EvtCreateRenderContext(0, NULL, EvtRenderContextSystem);
+}
+
+ULONGLONG CreateUserRenderContext() {
+	return (ULONGLONG)EvtCreateRenderContext(0, NULL, EvtRenderContextUser);
 }
 
 int GetRenderedValueType(PVOID pRenderedValues, int property) {

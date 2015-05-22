@@ -33,6 +33,9 @@ type WinLogEvent struct {
 	ProviderText string
 	IdText       string
 
+	// All UserData or EventData
+	UserData []string
+
 	// Serialied XML bookmark to
 	// restart at this event
 	Bookmark string
@@ -51,13 +54,14 @@ type WinLogWatcher struct {
 	errChan   chan error
 	eventChan chan *WinLogEvent
 
-	renderContext SysRenderContext
+	sysRenderContext RenderContext
+	userRenderContext RenderContext
 	watches       map[string]*channelWatcher
 	watchMutex    sync.Mutex
 	shutdown      chan interface{}
 }
 
-type SysRenderContext uint64
+type RenderContext uint64
 type ListenerHandle uint64
 type PublisherHandle uint64
 type EventHandle uint64

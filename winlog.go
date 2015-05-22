@@ -4,7 +4,6 @@ package winlog
 
 import (
 	"fmt"
-	"unsafe"
 )
 
 func (self *WinLogWatcher) Event() <-chan *WinLogEvent {
@@ -17,7 +16,11 @@ func (self *WinLogWatcher) Error() <-chan error {
 
 // Create a new watcher
 func NewWinLogWatcher() (*WinLogWatcher, error) {
-	cHandle, err := GetSystemRenderContext()
+	sysContext, err := GetSystemRenderContext()
+	if err != nil {
+		return nil, err
+	}
+	userContext, err := GetUserRenderContext()
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +28,8 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
 		shutdown:      make(chan interface{}),
 		errChan:       make(chan error),
 		eventChan:     make(chan *WinLogEvent),
-		renderContext: cHandle,
+		sysRenderContext: sysContext,
+		userRenderContext: userContext,
 		watches:       make(map[string]*channelWatcher),
 	}, nil
 }
@@ -114,7 +118,8 @@ func (self *WinLogWatcher) Shutdown() {
 	for channel, watch := range watches {
 		self.removeSubscription(channel, watch)
 	}
-	CloseEventHandle(uint64(self.renderContext))
+	CloseEventHandle(uint64(self.sysRenderContext))
+	CloseEventHandle(uint64(self.userRenderContext))
 	close(self.errChan)
 	close(self.eventChan)
 }
@@ -124,7 +129,7 @@ func (self *WinLogWatcher) PublishError(err error) {
 }
 
 func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error) {
-	renderedFields, err := RenderEventValues(self.renderContext, handle)
+	renderedFields, err := RenderEventValues(self.sysRenderContext, handle)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to render event values: %v", err)
 	}
@@ -157,8 +162,17 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error
 	channelText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageChannel)
 	idText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageId)
 
+	FreeRenderedFields(renderedFields)
+
+  userFields, err := RenderEventValues(self.userRenderContext, handle)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to render user data in event: %v", err)
+	}
+
+  userData := RenderAllFieldsAsStrings(userFields)
+  FreeRenderedFields(userFields)
+
 	CloseEventHandle(uint64(publisherHandle))
-	Free(unsafe.Pointer(renderedFields))
 
 	event := WinLogEvent{
 		ProviderName: providerName,
@@ -182,6 +196,7 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error
 		ChannelText:  channelText,
 		ProviderText: providerText,
 		IdText:       idText,
+		UserData:		 	userData,
 	}
 	return &event, nil
 }
