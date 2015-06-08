@@ -11,13 +11,13 @@
 
 // Create a new listener on the given channel. Events will be passed
 // to the callback of *pWatcher. Starts at the current position in the log
-ULONGLONG CreateListener(char* channel, int startpos, PVOID pWatcher);
+ULONGLONG CreateListener(char* channel, char* query, int startpos, PVOID pWatcher);
 
 // Create a new listener on the given channel. Events will be passed
 // to the callback of *pWatcher. Starts at the given bookmark handle.
 // Note: This doesn't set the strict flag - if the log was truncated between
 // the bookmark and now, it'll continue silently from the earliest event.
-ULONGLONG CreateListenerFromBookmark(char* channel, PVOID pWatcher, ULONGLONG hBookmark);
+ULONGLONG CreateListenerFromBookmark(char* channel, char* query, PVOID pWatcher, ULONGLONG hBookmark);
 
 // Get the string for the last error code
 char* GetLastErrorString();

@@ -157,7 +157,7 @@ DWORD WINAPI SubscriptionCallback(EVT_SUBSCRIBE_NOTIFY_ACTION action, PVOID pCon
     return ERROR_SUCCESS; // The service ignores the returned status.
 }
 
-ULONGLONG SetupListener(char* channel, PVOID pWatcher, EVT_HANDLE hBookmark, EVT_SUBSCRIBE_FLAGS flags)
+ULONGLONG SetupListener(char* channel, char* query, PVOID pWatcher, EVT_HANDLE hBookmark, EVT_SUBSCRIBE_FLAGS flags)
 {
 	DWORD status = ERROR_SUCCESS;
 	EVT_HANDLE hSubscription = NULL;
@@ -169,21 +169,29 @@ ULONGLONG SetupListener(char* channel, PVOID pWatcher, EVT_HANDLE hBookmark, EVT
 		return 0;
 	}
 
-    // Convert Go string to wide characters
-	mbstowcs(lChannel, channel, maxWideChannelLen);
+	size_t maxWideQueryLen = mbstowcs(NULL, query, 0) + 1;
+	LPWSTR lQuery = malloc(maxWideQueryLen * sizeof(wchar_t));
+	if (!lQuery) {
+		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		return 0;
+	}
 
-    // Subscribe to events beginning in the present. All future events will trigger the callback.
-	hSubscription = EvtSubscribe(NULL, NULL, lChannel, NULL, hBookmark, pWatcher, (EVT_SUBSCRIBE_CALLBACK)SubscriptionCallback, flags);
+  // Convert Go string to wide characters
+	mbstowcs(lChannel, channel, maxWideChannelLen);
+	mbstowcs(lQuery, query, maxWideQueryLen);
+
+  // Subscribe to events beginning in the present. All future events will trigger the callback.
+	hSubscription = EvtSubscribe(NULL, NULL, lChannel, lQuery, hBookmark, pWatcher, (EVT_SUBSCRIBE_CALLBACK)SubscriptionCallback, flags);
 	free(lChannel);
 	return (ULONGLONG)hSubscription;
 }
 
-ULONGLONG CreateListener(char* channel, int startPos, PVOID pWatcher) {
-	return SetupListener(channel, pWatcher, NULL, startPos);
+ULONGLONG CreateListener(char* channel, char* query, int startPos, PVOID pWatcher) {
+	return SetupListener(channel, query, pWatcher, NULL, startPos);
 }
 
-ULONGLONG CreateListenerFromBookmark(char* channel, PVOID pWatcher, ULONGLONG hBookmark) {
-	return SetupListener(channel, pWatcher, (EVT_HANDLE)hBookmark, EvtSubscribeStartAfterBookmark);
+ULONGLONG CreateListenerFromBookmark(char* channel, char* query, PVOID pWatcher, ULONGLONG hBookmark) {
+	return SetupListener(channel, query, pWatcher, (EVT_HANDLE)hBookmark, EvtSubscribeStartAfterBookmark);
 }
 
 ULONGLONG GetTestEventHandle() {

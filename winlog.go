@@ -31,18 +31,20 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
 }
 
 // Subscribe to a Windows Event Log channel, starting with the first event
-// in the log
-func (self *WinLogWatcher) SubscribeFromBeginning(channel string) error {
-	return self.subscribeWithoutBookmark(channel, EvtSubscribeStartAtOldestRecord)
+// in the log. `query` is an XPath expression for filtering events: to recieve
+// all events on the channel, use "*" as the query.
+func (self *WinLogWatcher) SubscribeFromBeginning(channel, query string) error {
+	return self.subscribeWithoutBookmark(channel, query, EvtSubscribeStartAtOldestRecord)
 }
 
 // Subscribe to a Windows Event Log channel, starting with the next event
-// that arrives.
-func (self *WinLogWatcher) SubscribeFromNow(channel string) error {
-	return self.subscribeWithoutBookmark(channel, EvtSubscribeToFutureEvents)
+// that arrives. `query` is an XPath expression for filtering events: to recieve
+// all events on the channel, use "*" as the query.
+func (self *WinLogWatcher) SubscribeFromNow(channel, query string) error {
+	return self.subscribeWithoutBookmark(channel, query, EvtSubscribeToFutureEvents)
 }
 
-func (self *WinLogWatcher) subscribeWithoutBookmark(channel string, flags EVT_SUBSCRIBE_FLAGS) error {
+func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags EVT_SUBSCRIBE_FLAGS) error {
 	self.watchMutex.Lock()
 	defer self.watchMutex.Unlock()
 	if _, ok := self.watches[channel]; ok {
@@ -53,7 +55,7 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel string, flags EVT_SU
 		return fmt.Errorf("Failed to create new bookmark handle: %v", err)
 	}
 	callback := &LogEventCallbackWrapper{self}
-	subscription, err := CreateListener(channel, flags, callback)
+	subscription, err := CreateListener(channel, query, flags, callback)
 	if err != nil {
 		CloseEventHandle(uint64(newBookmark))
 		return err
@@ -67,8 +69,10 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel string, flags EVT_SU
 }
 
 // Subscribe to a Windows Event Log channel, starting with the first event in the log
-// after the bookmarked event. There may be a gap if events have been purged.
-func (self *WinLogWatcher) SubscribeFromBookmark(channel string, xmlString string) error {
+// after the bookmarked event. There may be a gap if events have been purged. `query` 
+// is an XPath expression for filtering events: to recieve all events on the channel, 
+// use "*" as the query
+func (self *WinLogWatcher) SubscribeFromBookmark(channel, query string, xmlString string) error {
 	self.watchMutex.Lock()
 	defer self.watchMutex.Unlock()
 	if _, ok := self.watches[channel]; ok {
@@ -79,7 +83,7 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel string, xmlString strin
 	if err != nil {
 		return fmt.Errorf("Failed to create new bookmark handle: %v", err)
 	}
-	subscription, err := CreateListenerFromBookmark(channel, callback, bookmark)
+	subscription, err := CreateListenerFromBookmark(channel, query, callback, bookmark)
 	if err != nil {
 		CloseEventHandle(uint64(bookmark))
 		return fmt.Errorf("Failed to add listener: %v", err)

@@ -104,11 +104,14 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 }
 
 // Get a handle for a event log subscription on the given channel.
+// `query` is an XPath expression to filter the events on the channel - "*" allows all events.
 // The resulting handle must be closed with CloseEventHandle.
-func CreateListener(channel string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEventCallbackWrapper) (ListenerHandle, error) {
+func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEventCallbackWrapper) (ListenerHandle, error) {
 	cChan := C.CString(channel)
-	listenerHandle := C.CreateListener(cChan, C.int(startpos), C.PVOID(watcher))
+	cQuery := C.CString(query)
+	listenerHandle := C.CreateListener(cChan, cQuery, C.int(startpos), C.PVOID(watcher))
 	C.free(unsafe.Pointer(cChan))
+	C.free(unsafe.Pointer(cQuery))
 	if listenerHandle == 0 {
 		return 0, GetLastError()
 	}
@@ -116,12 +119,15 @@ func CreateListener(channel string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEv
 }
 
 // Get a handle for an event log subscription on the given channel. Will begin at the
-// bookmarked event, or the closest possible event if the log has been truncated.
+// bookmarked event, or the closest possible event if the log has been truncated. 
+// `query` is an XPath expression to filter the events on the channel - "*" allows all events.
 // The resulting handle must be closed with CloseEventHandle.
-func CreateListenerFromBookmark(channel string, watcher *LogEventCallbackWrapper, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
+func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallbackWrapper, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
 	cChan := C.CString(channel)
-	listenerHandle := C.CreateListenerFromBookmark(cChan, C.PVOID(watcher), C.ULONGLONG(bookmarkHandle))
+	cQuery := C.CString(query)
+	listenerHandle := C.CreateListenerFromBookmark(cChan, cQuery, C.PVOID(watcher), C.ULONGLONG(bookmarkHandle))
 	C.free(unsafe.Pointer(cChan))
+	C.free(unsafe.Pointer(cQuery))
 	if listenerHandle == 0 {
 		return 0, GetLastError()
 	}
