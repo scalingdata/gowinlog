@@ -2,17 +2,12 @@
 
 package winlog
 
-/*
-#cgo LDFLAGS: -l wevtapi
-#include "bookmark.h"
-*/
-import "C"
 import (
-	"unsafe"
+	"syscall"
 )
 
 func CreateBookmark() (BookmarkHandle, error) {
-	bookmark := BookmarkHandle(C.CreateBookmark())
+	bookmark := BookmarkHandle(EvtCreateBookmark(nil))
 	if bookmark == 0 {
 		return 0, GetLastError()
 	}
@@ -20,28 +15,33 @@ func CreateBookmark() (BookmarkHandle, error) {
 }
 
 func CreateBookmarkFromXml(xmlString string) (BookmarkHandle, error) {
-	cString := C.CString(xmlString)
-	bookmark := C.CreateBookmarkFromXML(cString)
-	C.free(unsafe.Pointer(cString))
+	wideXmlString, err := syscall.UTF16PtrFromString(xmlString)
+	if err != nil {
+		return 0, err
+	}
+	bookmark := BookmarkHandle(EvtCreateBookmark(wideXmlString))
 	if bookmark == 0 {
 		return 0, GetLastError()
 	}
-	return BookmarkHandle(bookmark), nil
+	return bookmark, nil
 }
 
 func UpdateBookmark(bookmarkHandle BookmarkHandle, eventHandle EventHandle) error {
-	if C.UpdateBookmark(C.ULONGLONG(bookmarkHandle), C.ULONGLONG(eventHandle)) == 0 {
+	err := EvtUpdateBookmark(syscall.Handle(bookmarkHandle), syscall.Handle(eventHandle))
+	if err == 0 {
 		return GetLastError()
 	}
 	return nil
 }
 
 func RenderBookmark(bookmarkHandle BookmarkHandle) (string, error) {
-	cString := C.RenderBookmark(C.ULONGLONG(bookmarkHandle))
-	if cString == nil {
+	var dwUsed uint32
+	var dwProps uint32
+	EvtRender(0, syscall.Handle(bookmarkHandle), EvtRenderBookmark, 0, nil, &dwUsed, &dwProps)
+	buf := make([]uint16, dwUsed)
+	err := EvtRender(0, syscall.Handle(bookmarkHandle), EvtRenderBookmark, uint32(len(buf)), &buf[0], &dwUsed, &dwProps)
+	if err == 0 {
 		return "", GetLastError()
-	}
-	bookmarkXml := C.GoString(cString)
-	C.free(unsafe.Pointer(cString))
-	return bookmarkXml, nil
+	} 
+	return syscall.UTF16ToString(buf), nil
 }
