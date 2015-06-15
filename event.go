@@ -10,9 +10,9 @@ import (
 	"unsafe"
 )
 
-// Get a handle to a render context which will render properties from the System element.
-// Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting
-// handle must be closed with CloseEventHandle.
+/* Get a handle to a render context which will render properties from the System element.
+   Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting
+   handle must be closed with CloseEventHandle. */
 func GetSystemRenderContext() (SysRenderContext, error) {
 	context, err := EvtCreateRenderContext(0, 0, EvtRenderContextSystem)
 	if err != nil {
@@ -21,9 +21,9 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 	return SysRenderContext(context), nil
 }
 
-// Get a handle for a event log subscription on the given channel.
-// `query` is an XPath expression to filter the events on the channel - "*" allows all events.
-// The resulting handle must be closed with CloseEventHandle.
+/* Get a handle for a event log subscription on the given channel.
+   `query` is an XPath expression to filter the events on the channel - "*" allows all events.
+   The resulting handle must be closed with CloseEventHandle. */
 func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEventCallbackWrapper) (ListenerHandle, error) {
 	wideChan, err := syscall.UTF16PtrFromString(channel)
 	if err != nil {
@@ -40,10 +40,10 @@ func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher
 	return ListenerHandle(listenerHandle), nil
 }
 
-// Get a handle for an event log subscription on the given channel. Will begin at the
-// bookmarked event, or the closest possible event if the log has been truncated.
-// `query` is an XPath expression to filter the events on the channel - "*" allows all events.
-// The resulting handle must be closed with CloseEventHandle.
+/* Get a handle for an event log subscription on the given channel. Will begin at the
+   bookmarked event, or the closest possible event if the log has been truncated.
+   `query` is an XPath expression to filter the events on the channel - "*" allows all events.
+   The resulting handle must be closed with CloseEventHandle. */
 func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallbackWrapper, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
 	wideChan, err := syscall.UTF16PtrFromString(channel)
 	if err != nil {
@@ -60,7 +60,7 @@ func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallback
 	return ListenerHandle(listenerHandle), nil
 }
 
-// Get the formatted string that represents this message. This method wraps EvtFormatMessage.
+/* Get the formatted string that represents this message. This method wraps EvtFormatMessage. */
 func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle, format EVT_FORMAT_MESSAGE_FLAGS) (string, error) {
 	var size uint32 = 0
 	err := EvtFormatMessage(syscall.Handle(eventPublisherHandle), syscall.Handle(eventHandle), 0, 0, nil, uint32(format), 0, nil, &size)
@@ -78,14 +78,14 @@ func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle
 	return syscall.UTF16ToString(buf), nil
 }
 
-// Get the formatted string for the last error which occurred. Wraps GetLastError and FormatMessage.
+/* Get the formatted string for the last error which occurred. Wraps GetLastError and FormatMessage. */
 func GetLastError() error {
 	return syscall.GetLastError()
 }
 
-// Render the system properties from the event and returns an array of properties.
-// Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
-// or RenderUIntField depending on type. This buffer must be freed after use.
+/* Render the system properties from the event and returns an array of properties.
+   Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
+   or RenderUIntField depending on type. This buffer must be freed after use. */
 func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) (EvtVariant, error) {
 	var bufferUsed uint32 = 0
 	var propertyCount uint32 = 0
@@ -102,7 +102,7 @@ func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) 
 	return NewEvtVariant(buffer), nil
 }
 
-// Get a handle that represents the publisher of the event, given the rendered event values.
+/* Get a handle that represents the publisher of the event, given the rendered event values. */
 func GetEventPublisherHandle(renderedFields EvtVariant) (PublisherHandle, error) {
 	publisher, err := renderedFields.String(EvtSystemProviderName)
 	if err != nil {
@@ -119,12 +119,12 @@ func GetEventPublisherHandle(renderedFields EvtVariant) (PublisherHandle, error)
 	return PublisherHandle(handle), nil
 }
 
-// Close an event handle.
+/* Close an event handle. */
 func CloseEventHandle(handle uint64) error {
 	return EvtClose(syscall.Handle(handle))
 }
 
-// Cancel pending actions on the event handle.
+/* Cancel pending actions on the event handle. */
 func CancelEventHandle(handle uint64) error {
 	err := EvtCancel(syscall.Handle(handle))
 	if err != nil {

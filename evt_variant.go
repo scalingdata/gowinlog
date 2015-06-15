@@ -50,16 +50,20 @@ type fileTime struct {
 
 type EvtVariant []byte
 
+/* Given a byte array from EvtRender, make an EvtVariant.
+   EvtVariant wraps an array of variables. */
 func NewEvtVariant(buffer []byte) EvtVariant {
 	return EvtVariant(buffer)
 }
 
-func (e EvtVariant) ElemAt(index uint32) *evtVariant {
+func (e EvtVariant) elemAt(index uint32) *evtVariant {
 	return (*evtVariant)(unsafe.Pointer(uintptr(16*index) + uintptr(unsafe.Pointer(&e[0]))))
 }
 
+/* Return the string value of the variable at `index`. If the
+   variable isn't a string, an error is returned */
 func (e EvtVariant) String(index uint32) (string, error) {
-	elem := e.ElemAt(index)
+	elem := e.elemAt(index)
 	if elem.Type != EvtVarTypeString {
 		return "", fmt.Errorf("EvtVariant at index %v was not of type string, type was %v", index, elem.Type)
 	}
@@ -68,8 +72,10 @@ func (e EvtVariant) String(index uint32) (string, error) {
 	return str, nil
 }
 
+/* Return the unsigned integer value at `index`. If the variable
+   isn't a Byte, UInt16, UInt32 or UInt64 an error is returned. */
 func (e EvtVariant) Uint(index uint32) (uint64, error) {
-	elem := e.ElemAt(index)
+	elem := e.elemAt(index)
 	switch elem.Type {
 	case EvtVarTypeByte:
 		return uint64(byte(elem.Data)), nil
@@ -84,8 +90,10 @@ func (e EvtVariant) Uint(index uint32) (uint64, error) {
 	}
 }
 
+/* Return the integer value at `index`. If the variable
+   isn't a SByte, Int16, Int32 or Int64 an error is returned. */
 func (e EvtVariant) Int(index uint32) (int64, error) {
-	elem := e.ElemAt(index)
+	elem := e.elemAt(index)
 	switch elem.Type {
 	case EvtVarTypeSByte:
 		return int64(byte(elem.Data)), nil
@@ -100,8 +108,10 @@ func (e EvtVariant) Int(index uint32) (int64, error) {
 	}
 }
 
+/* Return the FileTime at `index`, converted to Time.time. If the
+   variable isn't a FileTime an error is returned */
 func (e EvtVariant) FileTime(index uint32) (time.Time, error) {
-	elem := e.ElemAt(index)
+	elem := e.elemAt(index)
 	if elem.Type != EvtVarTypeFileTime {
 		return time.Now(), fmt.Errorf("EvtVariant at index %v was not of type FileTime, type was %v", index, elem.Type)
 	}
@@ -111,6 +121,8 @@ func (e EvtVariant) FileTime(index uint32) (time.Time, error) {
 	return time.Unix(timeSecs, timeNano), nil
 }
 
+/* Return whether the variable was actually set, or whether it
+   has null type */
 func (e EvtVariant) IsNull(index uint32) bool {
-	return e.ElemAt(index).Type == EvtVarTypeNull
+	return e.elemAt(index).Type == EvtVarTypeNull
 }
