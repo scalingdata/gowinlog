@@ -5,7 +5,6 @@ package winlog
 import (
 	"encoding/xml"
 	. "testing"
-	"unsafe"
 )
 
 type bookmarkListXml struct {
@@ -85,9 +84,8 @@ func TestUpdateBookmark(t *T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer Free(unsafe.Pointer(renderedFields))
-	channel, _ := RenderStringField(renderedFields, EvtSystemChannel)
-	eventId, _ := RenderUIntField(renderedFields, EvtSystemEventRecordId)
+	channel, _ := renderedFields.String(EvtSystemChannel)
+	eventId, _ := renderedFields.Uint(EvtSystemEventRecordId)
 	bookmarkChannel := bookmarkStruct.Bookmarks[0].Channel
 	bookmarkId := bookmarkStruct.Bookmarks[0].RecordId
 

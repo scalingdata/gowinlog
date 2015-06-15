@@ -11,7 +11,7 @@ func main() {
 		fmt.Printf("Couldn't create watcher: %v\n", err)
 		return
 	}
-	err = watcher.SubscribeFromBeginning("Application")
+	err = watcher.SubscribeFromBeginning("Application", "*")
 	if err != nil {
 		fmt.Printf("Couldn't subscribe to Application: %v", err)
 	}
@@ -19,7 +19,7 @@ func main() {
 		select {
 		case evt := <-watcher.Event():
 			fmt.Printf("Event: %v\n", evt)
-			bookmark := evt.GetBookmark()
+			bookmark := evt.Bookmark
 			fmt.Printf("Bookmark: %v\n", bookmark)
 		case err := <-watcher.Error():
 			fmt.Printf("Error: %v\n\n", err)
