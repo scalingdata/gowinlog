@@ -70,4 +70,3 @@ type LogEventCallback interface {
 type LogEventCallbackWrapper struct {
 	callback LogEventCallback
 }
-

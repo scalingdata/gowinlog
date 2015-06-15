@@ -68,8 +68,8 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags
 }
 
 // Subscribe to a Windows Event Log channel, starting with the first event in the log
-// after the bookmarked event. There may be a gap if events have been purged. `query` 
-// is an XPath expression for filtering events: to recieve all events on the channel, 
+// after the bookmarked event. There may be a gap if events have been purged. `query`
+// is an XPath expression for filtering events: to recieve all events on the channel,
 // use "*" as the query
 func (self *WinLogWatcher) SubscribeFromBookmark(channel, query string, xmlString string) error {
 	self.watchMutex.Lock()

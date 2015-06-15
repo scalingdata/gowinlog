@@ -5,9 +5,9 @@ package winlog
 import "C"
 
 import (
-	"unsafe"
-	"syscall"
 	"fmt"
+	"syscall"
+	"unsafe"
 )
 
 // Get a handle to a render context which will render properties from the System element.
@@ -29,7 +29,7 @@ func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher
 	if err != nil {
 		return 0, err
 	}
-	wideQuery,err := syscall.UTF16PtrFromString(query)
+	wideQuery, err := syscall.UTF16PtrFromString(query)
 	if err != nil {
 		return 0, err
 	}
@@ -41,7 +41,7 @@ func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher
 }
 
 // Get a handle for an event log subscription on the given channel. Will begin at the
-// bookmarked event, or the closest possible event if the log has been truncated. 
+// bookmarked event, or the closest possible event if the log has been truncated.
 // `query` is an XPath expression to filter the events on the channel - "*" allows all events.
 // The resulting handle must be closed with CloseEventHandle.
 func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallbackWrapper, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
@@ -49,7 +49,7 @@ func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallback
 	if err != nil {
 		return 0, err
 	}
-	wideQuery,err := syscall.UTF16PtrFromString(query)
+	wideQuery, err := syscall.UTF16PtrFromString(query)
 	if err != nil {
 		return 0, err
 	}
@@ -65,7 +65,7 @@ func FormatMessage(eventPublisherHandle PublisherHandle, eventHandle EventHandle
 	var size uint32 = 0
 	err := EvtFormatMessage(syscall.Handle(eventPublisherHandle), syscall.Handle(eventHandle), 0, 0, nil, uint32(format), 0, nil, &size)
 	if err != nil {
-		if errno, ok := err.(syscall.Errno); !ok || errno != 122{
+		if errno, ok := err.(syscall.Errno); !ok || errno != 122 {
 			// Check if the error is ERR_INSUFICIENT_BUFFER
 			return "", err
 		}

@@ -38,6 +38,6 @@ func RenderBookmark(bookmarkHandle BookmarkHandle) (string, error) {
 	err := EvtRender(0, syscall.Handle(bookmarkHandle), EvtRenderBookmark, uint32(len(buf)), &buf[0], &dwUsed, &dwProps)
 	if err != nil {
 		return "", err
-	} 
+	}
 	return syscall.UTF16ToString(buf), nil
 }
