@@ -1,6 +1,10 @@
 # gowinlog
 Go library for subscribing to the Windows Event Log.
 
+Godocs
+=======
+[gowinlog v0](https://gopkg.in/scalingdata/gowinlog.v0))
+
 Installation
 =======
 
