@@ -5,7 +5,7 @@ package winlog
 import (
 	"encoding/xml"
 	. "testing"
-	"unsafe"
+	"time"
 )
 
 type ProviderXml struct {
@@ -19,7 +19,7 @@ type EventIdXml struct {
 }
 
 type TimeCreatedXml struct {
-	SystemTime string `xml:"SystemTime,attr"`
+	SystemTime time.Time `xml:"SystemTime,attr"`
 }
 
 type ExecutionXml struct {
@@ -77,7 +77,6 @@ func TestXmlRenderMatchesOurs(t *T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer Free(unsafe.Pointer(renderedFields))
 	publisherHandle, err := GetEventPublisherHandle(renderedFields)
 	if err != nil {
 		t.Fatal(err)
@@ -115,7 +114,7 @@ func TestXmlRenderMatchesOurs(t *T) {
 	assertEqual(event.OpcodeText, eventXml.RenderingInfo.OpcodeText, t)
 	assertEqual(event.ChannelText, eventXml.RenderingInfo.ChannelText, t)
 	assertEqual(event.ProviderText, eventXml.RenderingInfo.ProviderText, t)
-	assertEqual(event.Created.Format("2006-01-02T15:04:05.000000000Z"), eventXml.System.TimeCreated.SystemTime, t)
+	assertEqual(event.Created.UTC(), eventXml.System.TimeCreated.SystemTime.UTC(), t)
 }
 
 func BenchmarkXmlDecode(b *B) {
@@ -146,7 +145,6 @@ func BenchmarkXmlDecode(b *B) {
 		if err = xml.Unmarshal([]byte(xmlString), &eventXml); err != nil {
 			b.Fatal(err)
 		}
-		Free(unsafe.Pointer(renderedFields))
 		CloseEventHandle(uint64(publisherHandle))
 	}
 }

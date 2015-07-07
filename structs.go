@@ -3,7 +3,6 @@ package winlog
 import (
 	"sync"
 	"time"
-	"unsafe"
 )
 
 // Stores the common fields from a log event
@@ -61,7 +60,6 @@ type SysRenderContext uint64
 type ListenerHandle uint64
 type PublisherHandle uint64
 type EventHandle uint64
-type RenderedFields unsafe.Pointer
 type BookmarkHandle uint64
 
 type LogEventCallback interface {

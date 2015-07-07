@@ -2,46 +2,46 @@
 
 package winlog
 
-/*
-#cgo LDFLAGS: -l wevtapi
-#include "bookmark.h"
-*/
-import "C"
 import (
-	"unsafe"
+	"syscall"
 )
 
+/* Create a new, empty bookmark. Bookmark handles must be closed with CloseEventHandle. */
 func CreateBookmark() (BookmarkHandle, error) {
-	bookmark := BookmarkHandle(C.CreateBookmark())
-	if bookmark == 0 {
-		return 0, GetLastError()
-	}
-	return bookmark, nil
-}
-
-func CreateBookmarkFromXml(xmlString string) (BookmarkHandle, error) {
-	cString := C.CString(xmlString)
-	bookmark := C.CreateBookmarkFromXML(cString)
-	C.free(unsafe.Pointer(cString))
-	if bookmark == 0 {
-		return 0, GetLastError()
+	bookmark, err := EvtCreateBookmark(nil)
+	if err != nil {
+		return 0, err
 	}
 	return BookmarkHandle(bookmark), nil
 }
 
-func UpdateBookmark(bookmarkHandle BookmarkHandle, eventHandle EventHandle) error {
-	if C.UpdateBookmark(C.ULONGLONG(bookmarkHandle), C.ULONGLONG(eventHandle)) == 0 {
-		return GetLastError()
+/* Create a bookmark from a XML-serialized bookmark. Bookmark handles must be closed with CloseEventHandle. */
+func CreateBookmarkFromXml(xmlString string) (BookmarkHandle, error) {
+	wideXmlString, err := syscall.UTF16PtrFromString(xmlString)
+	if err != nil {
+		return 0, err
 	}
-	return nil
+	bookmark, err := EvtCreateBookmark(wideXmlString)
+	if bookmark == 0 {
+		return 0, err
+	}
+	return BookmarkHandle(bookmark), nil
 }
 
+/* Update a bookmark to store the channel and ID of the given event */
+func UpdateBookmark(bookmarkHandle BookmarkHandle, eventHandle EventHandle) error {
+	return EvtUpdateBookmark(syscall.Handle(bookmarkHandle), syscall.Handle(eventHandle))
+}
+
+/* Serialize the bookmark as XML */
 func RenderBookmark(bookmarkHandle BookmarkHandle) (string, error) {
-	cString := C.RenderBookmark(C.ULONGLONG(bookmarkHandle))
-	if cString == nil {
-		return "", GetLastError()
+	var dwUsed uint32
+	var dwProps uint32
+	EvtRender(0, syscall.Handle(bookmarkHandle), EvtRenderBookmark, 0, nil, &dwUsed, &dwProps)
+	buf := make([]uint16, dwUsed)
+	err := EvtRender(0, syscall.Handle(bookmarkHandle), EvtRenderBookmark, uint32(len(buf)), &buf[0], &dwUsed, &dwProps)
+	if err != nil {
+		return "", err
 	}
-	bookmarkXml := C.GoString(cString)
-	C.free(unsafe.Pointer(cString))
-	return bookmarkXml, nil
+	return syscall.UTF16ToString(buf), nil
 }

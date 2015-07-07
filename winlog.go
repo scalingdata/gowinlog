@@ -4,7 +4,6 @@ package winlog
 
 import (
 	"fmt"
-	"unsafe"
 )
 
 func (self *WinLogWatcher) Event() <-chan *WinLogEvent {
@@ -69,8 +68,8 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags
 }
 
 // Subscribe to a Windows Event Log channel, starting with the first event in the log
-// after the bookmarked event. There may be a gap if events have been purged. `query` 
-// is an XPath expression for filtering events: to recieve all events on the channel, 
+// after the bookmarked event. There may be a gap if events have been purged. `query`
+// is an XPath expression for filtering events: to recieve all events on the channel,
 // use "*" as the query
 func (self *WinLogWatcher) SubscribeFromBookmark(channel, query string, xmlString string) error {
 	self.watchMutex.Lock()
@@ -139,19 +138,19 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error
 	}
 
 	/* If fields don't exist we include the nil value */
-	computerName, _ := RenderStringField(renderedFields, EvtSystemComputer)
-	providerName, _ := RenderStringField(renderedFields, EvtSystemProviderName)
-	channel, _ := RenderStringField(renderedFields, EvtSystemChannel)
-	level, _ := RenderUIntField(renderedFields, EvtSystemLevel)
-	task, _ := RenderUIntField(renderedFields, EvtSystemTask)
-	opcode, _ := RenderUIntField(renderedFields, EvtSystemOpcode)
-	recordId, _ := RenderUIntField(renderedFields, EvtSystemEventRecordId)
-	qualifiers, _ := RenderUIntField(renderedFields, EvtSystemQualifiers)
-	eventId, _ := RenderUIntField(renderedFields, EvtSystemEventID)
-	processId, _ := RenderUIntField(renderedFields, EvtSystemProcessID)
-	threadId, _ := RenderUIntField(renderedFields, EvtSystemThreadID)
-	version, _ := RenderUIntField(renderedFields, EvtSystemVersion)
-	created, _ := RenderFileTimeField(renderedFields, EvtSystemTimeCreated)
+	computerName, _ := renderedFields.String(EvtSystemComputer)
+	providerName, _ := renderedFields.String(EvtSystemProviderName)
+	channel, _ := renderedFields.String(EvtSystemChannel)
+	level, _ := renderedFields.Uint(EvtSystemLevel)
+	task, _ := renderedFields.Uint(EvtSystemTask)
+	opcode, _ := renderedFields.Uint(EvtSystemOpcode)
+	recordId, _ := renderedFields.Uint(EvtSystemEventRecordId)
+	qualifiers, _ := renderedFields.Uint(EvtSystemQualifiers)
+	eventId, _ := renderedFields.Uint(EvtSystemEventID)
+	processId, _ := renderedFields.Uint(EvtSystemProcessID)
+	threadId, _ := renderedFields.Uint(EvtSystemThreadID)
+	version, _ := renderedFields.Uint(EvtSystemVersion)
+	created, _ := renderedFields.FileTime(EvtSystemTimeCreated)
 
 	msgText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
 	lvlText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageLevel)
@@ -162,7 +161,6 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error
 	idText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageId)
 
 	CloseEventHandle(uint64(publisherHandle))
-	Free(unsafe.Pointer(renderedFields))
 
 	event := WinLogEvent{
 		ProviderName: providerName,
