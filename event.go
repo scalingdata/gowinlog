@@ -53,7 +53,7 @@ func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallback
 	if err != nil {
 		return 0, err
 	}
-	listenerHandle, err := EvtSubscribe(0, 0, wideChan, wideQuery, syscall.Handle(bookmarkHandle), uintptr(unsafe.Pointer(watcher)), syscall.NewCallback(watcher), uint32(EvtSubscribeStartAfterBookmark))
+	listenerHandle, err := EvtSubscribe(0, 0, wideChan, wideQuery, syscall.Handle(bookmarkHandle), uintptr(unsafe.Pointer(watcher)), syscall.NewCallback(eventCallback), uint32(EvtSubscribeStartAfterBookmark))
 	if err != nil {
 		return 0, err
 	}
