@@ -119,7 +119,7 @@ func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher
 }
 
 // Get a handle for an event log subscription on the given channel. Will begin at the
-// bookmarked event, or the closest possible event if the log has been truncated. 
+// bookmarked event, or the closest possible event if the log has been truncated.
 // `query` is an XPath expression to filter the events on the channel - "*" allows all events.
 // The resulting handle must be closed with CloseEventHandle.
 func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallbackWrapper, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
@@ -284,6 +284,7 @@ func eventCallbackError(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
 
 //export eventCallback
 func eventCallback(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
-	watcher := (*LogEventCallbackWrapper)(logWatcher).callback
-	watcher.PublishEvent(EventHandle(handle))
+	wrapper := (*LogEventCallbackWrapper)(logWatcher)
+	watcher := wrapper.callback
+	watcher.PublishEvent(EventHandle(handle), wrapper.channel)
 }
