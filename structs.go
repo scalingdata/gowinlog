@@ -66,9 +66,10 @@ type BookmarkHandle uint64
 
 type LogEventCallback interface {
 	PublishError(error)
-	PublishEvent(EventHandle)
+	PublishEvent(EventHandle, string)
 }
 
 type LogEventCallbackWrapper struct {
 	callback LogEventCallback
+	channel  string
 }
