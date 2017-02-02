@@ -36,6 +36,10 @@ type WinLogEvent struct {
 	// Serialied XML bookmark to
 	// restart at this event
 	Bookmark string
+
+	// Subscribed channel from which the event was retrieved,
+	// which may be different than the event's channel
+	SubscribedChannel string
 }
 
 type channelWatcher struct {
@@ -70,6 +74,6 @@ type LogEventCallback interface {
 }
 
 type LogEventCallbackWrapper struct {
-	callback LogEventCallback
-	channel  string
+	callback          LogEventCallback
+	subscribedChannel string
 }
