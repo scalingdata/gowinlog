@@ -27,6 +27,10 @@ char* GetLastErrorString();
 // GetRendered<type>Value. Buffer must be freed by the caller.
 PVOID RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent);
 
+// Render the event's XML body
+char* RenderEventXML(ULONGLONG hEvent);
+
+
 // Get the type of the variable at the given index in the array.
 // Possible types are EvtVarType*
 int GetRenderedValueType(PVOID pRenderedValues, int property);

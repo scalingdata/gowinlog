@@ -138,6 +138,11 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 		return nil, fmt.Errorf("Failed to render event values: %v", err)
 	}
 
+	xml, err := RenderEventXML(handle)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to render event xml: %v", err)
+	}
+
 	/* If fields don't exist we include the nil value */
 	computerName, _ := RenderStringField(renderedFields, EvtSystemComputer)
 	providerName, _ := RenderStringField(renderedFields, EvtSystemProviderName)
@@ -165,6 +170,8 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 	Free(unsafe.Pointer(renderedFields))
 
 	event := WinLogEvent{
+		Xml: xml,
+
 		ProviderName: providerName,
 		EventId:      eventId,
 		Qualifiers:   qualifiers,
