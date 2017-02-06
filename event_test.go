@@ -8,6 +8,10 @@ import (
 	"unsafe"
 )
 
+const (
+	SUBSCRIBED_CHANNEL = "test-channel"
+)
+
 type ProviderXml struct {
 	ProviderName    string `xml:"Name,attr"`
 	EventSourceName string `xml:"EventSourceName,attr"`
@@ -94,7 +98,7 @@ func TestXmlRenderMatchesOurs(t *T) {
 
 	logWatcher, err := NewWinLogWatcher()
 	defer logWatcher.Shutdown()
-	event, err := logWatcher.convertEvent(testEvent)
+	event, err := logWatcher.convertEvent(testEvent, SUBSCRIBED_CHANNEL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,6 +120,7 @@ func TestXmlRenderMatchesOurs(t *T) {
 	assertEqual(event.ChannelText, eventXml.RenderingInfo.ChannelText, t)
 	assertEqual(event.ProviderText, eventXml.RenderingInfo.ProviderText, t)
 	assertEqual(event.Created.Format("2006-01-02T15:04:05.000000000Z"), eventXml.System.TimeCreated.SystemTime, t)
+	assertEqual(event.SubscribedChannel, SUBSCRIBED_CHANNEL, t)
 }
 
 func BenchmarkXmlDecode(b *B) {
@@ -164,7 +169,7 @@ func BenchmarkAPIDecode(b *B) {
 	defer CloseEventHandle(uint64(renderContext))
 	logWatcher, err := NewWinLogWatcher()
 	for i := 0; i < b.N; i++ {
-		_, err := logWatcher.convertEvent(testEvent)
+		_, err := logWatcher.convertEvent(testEvent, SUBSCRIBED_CHANNEL)
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -286,5 +286,5 @@ func eventCallbackError(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
 func eventCallback(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
 	wrapper := (*LogEventCallbackWrapper)(logWatcher)
 	watcher := wrapper.callback
-	watcher.PublishEvent(EventHandle(handle), wrapper.channel)
+	watcher.PublishEvent(EventHandle(handle), wrapper.subscribedChannel)
 }

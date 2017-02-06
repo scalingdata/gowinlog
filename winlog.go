@@ -54,7 +54,7 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags
 	if err != nil {
 		return fmt.Errorf("Failed to create new bookmark handle: %v", err)
 	}
-	callback := &LogEventCallbackWrapper{callback: self, channel: channel}
+	callback := &LogEventCallbackWrapper{callback: self, subscribedChannel: channel}
 	subscription, err := CreateListener(channel, query, flags, callback)
 	if err != nil {
 		CloseEventHandle(uint64(newBookmark))
@@ -78,7 +78,7 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel, query string, xmlStrin
 	if _, ok := self.watches[channel]; ok {
 		return fmt.Errorf("A watcher for channel %q already exists", channel)
 	}
-	callback := &LogEventCallbackWrapper{callback: self, channel: channel}
+	callback := &LogEventCallbackWrapper{callback: self, subscribedChannel: channel}
 	bookmark, err := CreateBookmarkFromXml(xmlString)
 	if err != nil {
 		return fmt.Errorf("Failed to create new bookmark handle: %v", err)
@@ -127,7 +127,7 @@ func (self *WinLogWatcher) PublishError(err error) {
 	self.errChan <- err
 }
 
-func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error) {
+func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel string) (*WinLogEvent, error) {
 	renderedFields, err := RenderEventValues(self.renderContext, handle)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to render event values: %v", err)
@@ -186,14 +186,16 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle) (*WinLogEvent, error
 		ChannelText:  channelText,
 		ProviderText: providerText,
 		IdText:       idText,
+
+		SubscribedChannel: subscribedChannel,
 	}
 	return &event, nil
 }
 
-func (self *WinLogWatcher) PublishEvent(handle EventHandle, channel string) {
+func (self *WinLogWatcher) PublishEvent(handle EventHandle, subscribedChannel string) {
 
 	// Convert the event from the event log schema
-	event, err := self.convertEvent(handle)
+	event, err := self.convertEvent(handle, subscribedChannel)
 	if err != nil {
 		self.PublishError(err)
 		return
@@ -201,10 +203,10 @@ func (self *WinLogWatcher) PublishEvent(handle EventHandle, channel string) {
 
 	// Get the bookmark for the channel
 	self.watchMutex.Lock()
-	watch, ok := self.watches[channel]
+	watch, ok := self.watches[subscribedChannel]
 	self.watchMutex.Unlock()
 	if !ok {
-		self.errChan <- fmt.Errorf("No handle for channel bookmark %q", channel)
+		self.errChan <- fmt.Errorf("No handle for channel bookmark %q", subscribedChannel)
 		return
 	}
 
