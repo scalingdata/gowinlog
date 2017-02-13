@@ -1,5 +1,11 @@
 // +build windows
 
+// This file contains convenience stub functions that call Win32 API
+// functions and return values suitable for handling in Go.
+// Note that some functions such as EvtRender() and EvtFormatMessage() support a model
+// where they are called twice - once to determine the necessary buffer size,
+// and once to copy values into the supplied buffer.
+
 #define _WIN32_WINNT 0x0602
 
 #include "event.h"
@@ -30,6 +36,41 @@ PVOID RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent) {
 		return NULL;
 	}
 	return pRenderedValues;
+}
+
+// Render the event as XML. The returned buffer must be freed after use.
+char* RenderEventXML(ULONGLONG hEvent) {
+	DWORD dwBufferSize = 0;
+	DWORD dwUsed = 0;
+	DWORD dwPropertyCount = 0;
+	EvtRender(NULL, (EVT_HANDLE)hEvent, EvtRenderEventXml, dwBufferSize, NULL, &dwUsed, &dwPropertyCount);
+
+	// Allocate a buffer to hold the utf-16 encoded xml string. Although the xml
+	// string is utf-16, the dwUsed value is in bytes, not characters
+	// See https://msdn.microsoft.com/en-us/library/windows/desktop/aa385471(v=vs.85).aspx
+	LPWSTR xmlWide = malloc(dwUsed);
+	if (!xmlWide) {
+		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		return NULL;
+	}
+	dwBufferSize = dwUsed;
+	if (! EvtRender(NULL, (EVT_HANDLE)hEvent, EvtRenderEventXml, dwBufferSize, xmlWide, &dwUsed, 0)){
+		free(xmlWide);
+		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		return NULL;
+	}
+
+	// Convert the xml string to multibyte
+	size_t lenXml = wcstombs(NULL, xmlWide, 0) + 1;
+	void* xml = malloc(lenXml);
+	if (!xml) {
+		free(xmlWide);
+		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+		return NULL;
+	}
+	wcstombs(xml, xmlWide, lenXml);
+	free(xmlWide);
+	return xml;
 }
 
 char* GetLastErrorString() {

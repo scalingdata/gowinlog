@@ -33,6 +33,9 @@ type WinLogEvent struct {
 	ProviderText string
 	IdText       string
 
+	// XML body
+	Xml string
+
 	// Serialied XML bookmark to
 	// restart at this event
 	Bookmark string

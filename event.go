@@ -235,6 +235,17 @@ func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) 
 	return values, nil
 }
 
+// Render the event as XML.
+func RenderEventXML(eventHandle EventHandle) (string, error) {
+	xml := C.RenderEventXML(C.ULONGLONG(eventHandle))
+	if xml == nil {
+		return "", GetLastError()
+	}
+	xmlString := C.GoString(xml)
+	C.free(unsafe.Pointer(xml))
+	return xmlString, nil
+}
+
 // Get a handle that represents the publisher of the event, given the rendered event values.
 func GetEventPublisherHandle(renderedFields RenderedFields) (PublisherHandle, error) {
 	handle := PublisherHandle(C.GetEventPublisherHandle(C.PVOID(renderedFields)))
