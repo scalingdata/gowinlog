@@ -22,12 +22,54 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
 		return nil, err
 	}
 	return &WinLogWatcher{
-		shutdown:      make(chan interface{}),
-		errChan:       make(chan error),
-		eventChan:     make(chan *WinLogEvent),
-		renderContext: cHandle,
-		watches:       make(map[string]*channelWatcher),
+		shutdown:       make(chan interface{}),
+		errChan:        make(chan error),
+		eventChan:      make(chan *WinLogEvent),
+		renderContext:  cHandle,
+		watches:        make(map[string]*channelWatcher),
+		renderMessage:  true,
+		renderLevel:    true,
+		renderTask:     true,
+		renderProvider: true,
+		renderOpcode:   true,
+		renderChannel:  true,
+		renderId:       true,
 	}, nil
+}
+
+// Whether to use EvtFormatMessage to render the event message
+func (self *WinLogWatcher) SetRenderMessage(render bool) {
+	self.renderMessage = render
+}
+
+// Whether to use EvtFormatMessage to render the event level
+func (self *WinLogWatcher) SetRenderLevel(render bool) {
+	self.renderLevel = render
+}
+
+// Whether to use EvtFormatMessage to render the event task
+func (self *WinLogWatcher) SetRenderTask(render bool) {
+	self.renderTask = render
+}
+
+// Whether to use EvtFormatMessage to render the event provider
+func (self *WinLogWatcher) SetRenderProvider(render bool) {
+	self.renderProvider = render
+}
+
+// Whether to use EvtFormatMessage to render the event opcode
+func (self *WinLogWatcher) SetRenderOpcode(render bool) {
+	self.renderOpcode = render
+}
+
+// Whether to use EvtFormatMessage to render the event channel
+func (self *WinLogWatcher) SetRenderChannel(render bool) {
+	self.renderChannel = render
+}
+
+// Whether to use EvtFormatMessage to render the event ID
+func (self *WinLogWatcher) SetRenderId(render bool) {
+	self.renderId = render
 }
 
 // Subscribe to a Windows Event Log channel, starting with the first event
@@ -158,13 +200,34 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 	version, _ := RenderUIntField(renderedFields, EvtSystemVersion)
 	created, _ := RenderFileTimeField(renderedFields, EvtSystemTimeCreated)
 
-	msgText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
-	lvlText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageLevel)
-	taskText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageTask)
-	providerText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageProvider)
-	opcodeText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
-	channelText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageChannel)
-	idText, _ := FormatMessage(publisherHandle, handle, EvtFormatMessageId)
+	var msgText, lvlText, taskText, providerText, opcodeText, channelText, idText string
+	if self.renderMessage {
+		msgText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
+	}
+
+	if self.renderLevel {
+		lvlText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageLevel)
+	}
+
+	if self.renderTask {
+		taskText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageTask)
+	}
+
+	if self.renderProvider {
+		providerText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageProvider)
+	}
+
+	if self.renderOpcode {
+		opcodeText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
+	}
+
+	if self.renderChannel {
+		channelText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageChannel)
+	}
+
+	if self.renderId {
+		idText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageId)
+	}
 
 	CloseEventHandle(uint64(publisherHandle))
 	Free(unsafe.Pointer(renderedFields))

@@ -62,6 +62,16 @@ type WinLogWatcher struct {
 	watches       map[string]*channelWatcher
 	watchMutex    sync.Mutex
 	shutdown      chan interface{}
+
+	// Optionally render localized fields. EvtFormatMessage() is slow, so
+	// skipping these fields provides a big speedup.
+	renderMessage  bool
+	renderLevel    bool
+	renderTask     bool
+	renderProvider bool
+	renderOpcode   bool
+	renderChannel  bool
+	renderId       bool
 }
 
 type SysRenderContext uint64
