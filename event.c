@@ -183,6 +183,8 @@ DWORD WINAPI SubscriptionCallback(EVT_SUBSCRIBE_NOTIFY_ACTION action, PVOID pCon
 	switch(action)
 	{
 		case EvtSubscribeActionError:
+		// In this case, hEvent is an error code, not a handle to an event
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/aa385596(v=vs.85).aspx
 		eventCallbackError((ULONGLONG)hEvent, pContext);
 		break;
 

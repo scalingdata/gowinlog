@@ -166,7 +166,12 @@ func (self *WinLogWatcher) Shutdown() {
 }
 
 func (self *WinLogWatcher) PublishError(err error) {
-	self.errChan <- err
+	// Publish the received error to the errChan, but
+	// discard if shutdown is in progress
+	select {
+	case self.errChan <- err:
+	case <-self.shutdown:
+	}
 }
 
 func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel string) (*WinLogEvent, error) {
