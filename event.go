@@ -288,9 +288,11 @@ func getTestEventHandle() (EventHandle, error) {
    Note: handles are only valid within the callback. Don't pass them out. */
 
 //export eventCallbackError
-func eventCallbackError(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
+func eventCallbackError(errCode C.ULONGLONG, logWatcher unsafe.Pointer) {
 	watcher := (*LogEventCallbackWrapper)(logWatcher).callback
-	watcher.PublishError(fmt.Errorf("Event log callback got error: %v", GetLastError()))
+	// The provided errCode can be looked up in the Microsoft System Error Code table:
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/ms681382(v=vs.85).aspx
+	watcher.PublishError(fmt.Errorf("Event log callback got error code: %v", errCode))
 }
 
 //export eventCallback
