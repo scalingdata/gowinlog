@@ -32,7 +32,6 @@ PVOID RenderEventValues(ULONGLONG hContext, ULONGLONG hEvent) {
 	dwBufferSize = dwUsed;
 	if (! EvtRender((EVT_HANDLE)hContext, (EVT_HANDLE)hEvent, EvtRenderEventValues, dwBufferSize, pRenderedValues, &dwUsed, &dwPropertyCount)){
 		free(pRenderedValues);
-		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		return NULL;
 	}
 	return pRenderedValues;
@@ -56,7 +55,6 @@ char* RenderEventXML(ULONGLONG hEvent) {
 	dwBufferSize = dwUsed;
 	if (! EvtRender(NULL, (EVT_HANDLE)hEvent, EvtRenderEventXml, dwBufferSize, xmlWide, &dwUsed, 0)){
 		free(xmlWide);
-		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		return NULL;
 	}
 
@@ -97,7 +95,6 @@ char* GetFormattedMessage(ULONGLONG hEventPublisher, ULONGLONG hEvent, int forma
 	decodeReturn = EvtFormatMessage((EVT_HANDLE)hEventPublisher, (EVT_HANDLE)hEvent, 0, 0, NULL, format, dwBufferSize, messageWide, &dwBufferUsed);
 	if (!decodeReturn) {
 		free(messageWide);
-		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		return NULL;
 	}
 	size_t lenMessage = wcstombs(NULL, messageWide, 0) + 1;
