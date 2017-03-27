@@ -9,32 +9,35 @@ import (
 // Stores the common fields from a log event
 type WinLogEvent struct {
 	// From EvtRender
-	ProviderName string
-	EventId      uint64
-	Qualifiers   uint64
-	Level        uint64
-	Task         uint64
-	Opcode       uint64
-	Created      time.Time
-	RecordId     uint64
-	ProcessId    uint64
-	ThreadId     uint64
-	Channel      string
-	ComputerName string
-	Version      uint64
+	ProviderName      string
+	EventId           uint64
+	Qualifiers        uint64
+	Level             uint64
+	Task              uint64
+	Opcode            uint64
+	Created           time.Time
+	RecordId          uint64
+	ProcessId         uint64
+	ThreadId          uint64
+	Channel           string
+	ComputerName      string
+	Version           uint64
+	RenderedFieldsErr error
 
 	// From EvtFormatMessage
-	Msg          string
-	LevelText    string
-	TaskText     string
-	OpcodeText   string
-	Keywords     []string
-	ChannelText  string
-	ProviderText string
-	IdText       string
+	Msg                string
+	LevelText          string
+	TaskText           string
+	OpcodeText         string
+	Keywords           []string
+	ChannelText        string
+	ProviderText       string
+	IdText             string
+	PublisherHandleErr error
 
 	// XML body
-	Xml string
+	Xml    string
+	XmlErr error
 
 	// Serialied XML bookmark to
 	// restart at this event
