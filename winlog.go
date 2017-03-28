@@ -4,6 +4,7 @@ package winlog
 
 import (
 	"fmt"
+	"time"
 	"unsafe"
 )
 
@@ -175,92 +176,107 @@ func (self *WinLogWatcher) PublishError(err error) {
 }
 
 func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel string) (*WinLogEvent, error) {
-	renderedFields, err := RenderEventValues(self.renderContext, handle)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to render event values: %v", err)
-	}
+	// Rendered values
+	var computerName, providerName, channel string
+	var level, task, opcode, recordId, qualifiers, eventId, processId, threadId, version uint64
+	var created time.Time
 
-	publisherHandle, err := GetEventPublisherHandle(renderedFields)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to render event values: %v", err)
-	}
-
-	xml, err := RenderEventXML(handle)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to render event xml: %v", err)
-	}
-
-	/* If fields don't exist we include the nil value */
-	computerName, _ := RenderStringField(renderedFields, EvtSystemComputer)
-	providerName, _ := RenderStringField(renderedFields, EvtSystemProviderName)
-	channel, _ := RenderStringField(renderedFields, EvtSystemChannel)
-	level, _ := RenderUIntField(renderedFields, EvtSystemLevel)
-	task, _ := RenderUIntField(renderedFields, EvtSystemTask)
-	opcode, _ := RenderUIntField(renderedFields, EvtSystemOpcode)
-	recordId, _ := RenderUIntField(renderedFields, EvtSystemEventRecordId)
-	qualifiers, _ := RenderUIntField(renderedFields, EvtSystemQualifiers)
-	eventId, _ := RenderUIntField(renderedFields, EvtSystemEventID)
-	processId, _ := RenderUIntField(renderedFields, EvtSystemProcessID)
-	threadId, _ := RenderUIntField(renderedFields, EvtSystemThreadID)
-	version, _ := RenderUIntField(renderedFields, EvtSystemVersion)
-	created, _ := RenderFileTimeField(renderedFields, EvtSystemTimeCreated)
-
+	// Localized fields
 	var msgText, lvlText, taskText, providerText, opcodeText, channelText, idText string
-	if self.renderMessage {
-		msgText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
+
+	// Publisher fields
+	var publisherHandle PublisherHandle
+	var publisherHandleErr error
+
+	// Render XML, any error is stored in the returned WinLogEvent
+	xml, xmlErr := RenderEventXML(handle)
+
+	// Render the values
+	renderedFields, renderedFieldsErr := RenderEventValues(self.renderContext, handle)
+	if renderedFieldsErr == nil {
+		// If fields don't exist we include the nil value
+		computerName, _ = RenderStringField(renderedFields, EvtSystemComputer)
+		providerName, _ = RenderStringField(renderedFields, EvtSystemProviderName)
+		channel, _ = RenderStringField(renderedFields, EvtSystemChannel)
+		level, _ = RenderUIntField(renderedFields, EvtSystemLevel)
+		task, _ = RenderUIntField(renderedFields, EvtSystemTask)
+		opcode, _ = RenderUIntField(renderedFields, EvtSystemOpcode)
+		recordId, _ = RenderUIntField(renderedFields, EvtSystemEventRecordId)
+		qualifiers, _ = RenderUIntField(renderedFields, EvtSystemQualifiers)
+		eventId, _ = RenderUIntField(renderedFields, EvtSystemEventID)
+		processId, _ = RenderUIntField(renderedFields, EvtSystemProcessID)
+		threadId, _ = RenderUIntField(renderedFields, EvtSystemThreadID)
+		version, _ = RenderUIntField(renderedFields, EvtSystemVersion)
+		created, _ = RenderFileTimeField(renderedFields, EvtSystemTimeCreated)
+
+		// Render localized fields
+		publisherHandle, publisherHandleErr = GetEventPublisherHandle(renderedFields)
+		if publisherHandleErr == nil {
+			if self.renderMessage {
+				msgText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageEvent)
+			}
+
+			if self.renderLevel {
+				lvlText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageLevel)
+			}
+
+			if self.renderTask {
+				taskText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageTask)
+			}
+
+			if self.renderProvider {
+				providerText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageProvider)
+			}
+
+			if self.renderOpcode {
+				opcodeText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
+			}
+
+			if self.renderChannel {
+				channelText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageChannel)
+			}
+
+			if self.renderId {
+				idText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageId)
+			}
+		}
+
+		CloseEventHandle(uint64(publisherHandle))
+		Free(unsafe.Pointer(renderedFields))
 	}
 
-	if self.renderLevel {
-		lvlText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageLevel)
+	// Return an error if we couldn't render anything useful
+	if xmlErr != nil && renderedFieldsErr != nil {
+		return nil, fmt.Errorf("Failed to render event values and XML: %v", []error{renderedFieldsErr, xmlErr})
 	}
-
-	if self.renderTask {
-		taskText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageTask)
-	}
-
-	if self.renderProvider {
-		providerText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageProvider)
-	}
-
-	if self.renderOpcode {
-		opcodeText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageOpcode)
-	}
-
-	if self.renderChannel {
-		channelText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageChannel)
-	}
-
-	if self.renderId {
-		idText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageId)
-	}
-
-	CloseEventHandle(uint64(publisherHandle))
-	Free(unsafe.Pointer(renderedFields))
 
 	event := WinLogEvent{
-		Xml: xml,
+		Xml:    xml,
+		XmlErr: xmlErr,
 
-		ProviderName: providerName,
-		EventId:      eventId,
-		Qualifiers:   qualifiers,
-		Level:        level,
-		Task:         task,
-		Opcode:       opcode,
-		Created:      created,
-		RecordId:     recordId,
-		ProcessId:    processId,
-		ThreadId:     threadId,
-		Channel:      channel,
-		ComputerName: computerName,
-		Version:      version,
+		ProviderName:      providerName,
+		EventId:           eventId,
+		Qualifiers:        qualifiers,
+		Level:             level,
+		Task:              task,
+		Opcode:            opcode,
+		Created:           created,
+		RecordId:          recordId,
+		ProcessId:         processId,
+		ThreadId:          threadId,
+		Channel:           channel,
+		ComputerName:      computerName,
+		Version:           version,
+		RenderedFieldsErr: renderedFieldsErr,
 
-		Msg:          msgText,
-		LevelText:    lvlText,
-		TaskText:     taskText,
-		OpcodeText:   opcodeText,
-		ChannelText:  channelText,
-		ProviderText: providerText,
-		IdText:       idText,
+		Msg:                msgText,
+		LevelText:          lvlText,
+		TaskText:           taskText,
+		OpcodeText:         opcodeText,
+		ChannelText:        channelText,
+		ProviderText:       providerText,
+		IdText:             idText,
+		PublisherHandleErr: publisherHandleErr,
 
 		SubscribedChannel: subscribedChannel,
 	}
