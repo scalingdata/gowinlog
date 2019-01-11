@@ -106,7 +106,7 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 // Get a handle for a event log subscription on the given channel.
 // `query` is an XPath expression to filter the events on the channel - "*" allows all events.
 // The resulting handle must be closed with CloseEventHandle.
-func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEventCallbackWrapper) (ListenerHandle, error) {
+func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher *C.int) (ListenerHandle, error) {
 	cChan := C.CString(channel)
 	cQuery := C.CString(query)
 	listenerHandle := C.CreateListener(cChan, cQuery, C.int(startpos), C.PVOID(watcher))
@@ -289,7 +289,10 @@ func getTestEventHandle() (EventHandle, error) {
 
 //export eventCallbackError
 func eventCallbackError(errCode C.ULONGLONG, logWatcher unsafe.Pointer) {
-	watcher := (*LogEventCallbackWrapper)(logWatcher).callback
+	WrappersMutex.Lock()
+	wrapper := Wrappers[(*C.int)(logWatcher)]
+	WrappersMutex.Unlock()
+	watcher := wrapper.callback
 	// The provided errCode can be looked up in the Microsoft System Error Code table:
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/ms681382(v=vs.85).aspx
 	watcher.PublishError(fmt.Errorf("Event log callback got error code: %v", errCode))
@@ -297,7 +300,10 @@ func eventCallbackError(errCode C.ULONGLONG, logWatcher unsafe.Pointer) {
 
 //export eventCallback
 func eventCallback(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
-	wrapper := (*LogEventCallbackWrapper)(logWatcher)
+	fmt.Printf("logWatcher from CallBack = %#v\n", logWatcher)
+	WrappersMutex.Lock()
+	wrapper := Wrappers[(*C.int)(logWatcher)]
+	WrappersMutex.Unlock()
 	watcher := wrapper.callback
 	watcher.PublishEvent(EventHandle(handle), wrapper.subscribedChannel)
 }

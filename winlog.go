@@ -2,8 +2,10 @@
 
 package winlog
 
+import "C"
 import (
 	"fmt"
+	"sync"
 	"time"
 	"unsafe"
 )
@@ -87,6 +89,16 @@ func (self *WinLogWatcher) SubscribeFromNow(channel, query string) error {
 	return self.subscribeWithoutBookmark(channel, query, EvtSubscribeToFutureEvents)
 }
 
+var Wrappers = make(map[*C.int]*LogEventCallbackWrapper)
+var WrappersMutex = &sync.RWMutex{}
+
+func newEventCallbackWrapper(watcher *WinLogWatcher, channel string) *C.int {
+	cKey := C.int(0)
+	WrappersMutex.Lock()
+	Wrappers[&cKey] = &LogEventCallbackWrapper{callback: watcher, subscribedChannel: channel}
+	WrappersMutex.Unlock()
+	return &cKey
+}
 func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags EVT_SUBSCRIBE_FLAGS) error {
 	self.watchMutex.Lock()
 	defer self.watchMutex.Unlock()
@@ -97,7 +109,7 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags
 	if err != nil {
 		return fmt.Errorf("Failed to create new bookmark handle: %v", err)
 	}
-	callback := &LogEventCallbackWrapper{callback: self, subscribedChannel: channel}
+	callback := newEventCallbackWrapper(self, channel)
 	subscription, err := CreateListener(channel, query, flags, callback)
 	if err != nil {
 		CloseEventHandle(uint64(newBookmark))
@@ -106,7 +118,7 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags
 	self.watches[channel] = &channelWatcher{
 		bookmark:     newBookmark,
 		subscription: subscription,
-		callback:     callback,
+		callback:     Wrappers[callback],
 	}
 	return nil
 }
