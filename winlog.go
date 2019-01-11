@@ -97,6 +97,7 @@ func newEventCallbackWrapper(watcher *WinLogWatcher, channel string) *C.int {
 	WrappersMutex.Lock()
 	Wrappers[&cKey] = &LogEventCallbackWrapper{callback: watcher, subscribedChannel: channel}
 	WrappersMutex.Unlock()
+	fmt.Printf("create wrapper = %#v\n", &cKey)
 	return &cKey
 }
 func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags EVT_SUBSCRIBE_FLAGS) error {
@@ -115,11 +116,13 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags
 		CloseEventHandle(uint64(newBookmark))
 		return err
 	}
+	WrappersMutex.Lock()
 	self.watches[channel] = &channelWatcher{
 		bookmark:     newBookmark,
 		subscription: subscription,
-		callback:     Wrappers[callback],
+		callback: Wrappers[callback],
 	}
+	WrappersMutex.Unlock()
 	return nil
 }
 
@@ -133,7 +136,7 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel, query string, xmlStrin
 	if _, ok := self.watches[channel]; ok {
 		return fmt.Errorf("A watcher for channel %q already exists", channel)
 	}
-	callback := &LogEventCallbackWrapper{callback: self, subscribedChannel: channel}
+	callback := newEventCallbackWrapper(self, channel)
 	bookmark, err := CreateBookmarkFromXml(xmlString)
 	if err != nil {
 		return fmt.Errorf("Failed to create new bookmark handle: %v", err)
@@ -143,11 +146,13 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel, query string, xmlStrin
 		CloseEventHandle(uint64(bookmark))
 		return fmt.Errorf("Failed to add listener: %v", err)
 	}
+	WrappersMutex.Lock()
 	self.watches[channel] = &channelWatcher{
 		bookmark:     bookmark,
 		subscription: subscription,
-		callback:     callback,
+		callback:     Wrappers[callback],
 	}
+	WrappersMutex.Unlock()
 	return nil
 }
 
