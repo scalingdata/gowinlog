@@ -106,7 +106,7 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 // Get a handle for a event log subscription on the given channel.
 // `query` is an XPath expression to filter the events on the channel - "*" allows all events.
 // The resulting handle must be closed with CloseEventHandle.
-func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEventCallbackWrapper) (ListenerHandle, error) {
+func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher *C.int) (ListenerHandle, error) {
 	cChan := C.CString(channel)
 	cQuery := C.CString(query)
 	listenerHandle := C.CreateListener(cChan, cQuery, C.int(startpos), C.PVOID(watcher))
@@ -122,7 +122,7 @@ func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher
 // bookmarked event, or the closest possible event if the log has been truncated.
 // `query` is an XPath expression to filter the events on the channel - "*" allows all events.
 // The resulting handle must be closed with CloseEventHandle.
-func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallbackWrapper, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
+func CreateListenerFromBookmark(channel, query string, watcher *C.int, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
 	cChan := C.CString(channel)
 	cQuery := C.CString(query)
 	listenerHandle := C.CreateListenerFromBookmark(cChan, cQuery, C.PVOID(watcher), C.ULONGLONG(bookmarkHandle))
@@ -297,7 +297,10 @@ func eventCallbackError(errCode C.ULONGLONG, logWatcher unsafe.Pointer) {
 
 //export eventCallback
 func eventCallback(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
-	wrapper := (*LogEventCallbackWrapper)(logWatcher)
+	fmt.Printf("logWatcher from CallBack = %#v\n", logWatcher)
+	WrappersMutex.Lock()
+	wrapper := Wrappers[(*C.int)(logWatcher)]
+	WrappersMutex.Unlock()
 	watcher := wrapper.callback
 	watcher.PublishEvent(EventHandle(handle), wrapper.subscribedChannel)
 }
