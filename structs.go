@@ -49,9 +49,10 @@ type WinLogEvent struct {
 }
 
 type channelWatcher struct {
-	subscription ListenerHandle
-	callback     *LogEventCallbackWrapper
-	bookmark     BookmarkHandle
+	wrapperKey      uint32
+	subscription    ListenerHandle
+	callbackWrapper *LogEventCallbackWrapper
+	bookmark        BookmarkHandle
 }
 
 // Watches one or more event log channels

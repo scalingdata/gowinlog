@@ -106,10 +106,10 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 // Get a handle for a event log subscription on the given channel.
 // `query` is an XPath expression to filter the events on the channel - "*" allows all events.
 // The resulting handle must be closed with CloseEventHandle.
-func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEventCallbackWrapper) (ListenerHandle, error) {
+func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, callbackWrapperKey uint32) (ListenerHandle, error) {
 	cChan := C.CString(channel)
 	cQuery := C.CString(query)
-	listenerHandle := C.CreateListener(cChan, cQuery, C.int(startpos), C.PVOID(watcher))
+	listenerHandle := C.CreateListener(cChan, cQuery, C.int(startpos), C.PVOID(uintptr(callbackWrapperKey)))
 	C.free(unsafe.Pointer(cChan))
 	C.free(unsafe.Pointer(cQuery))
 	if listenerHandle == 0 {
@@ -122,10 +122,10 @@ func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher
 // bookmarked event, or the closest possible event if the log has been truncated.
 // `query` is an XPath expression to filter the events on the channel - "*" allows all events.
 // The resulting handle must be closed with CloseEventHandle.
-func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallbackWrapper, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
+func CreateListenerFromBookmark(channel, query string, callbackWrapperKey uint32, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
 	cChan := C.CString(channel)
 	cQuery := C.CString(query)
-	listenerHandle := C.CreateListenerFromBookmark(cChan, cQuery, C.PVOID(watcher), C.ULONGLONG(bookmarkHandle))
+	listenerHandle := C.CreateListenerFromBookmark(cChan, cQuery, C.PVOID(uintptr(callbackWrapperKey)), C.ULONGLONG(bookmarkHandle))
 	C.free(unsafe.Pointer(cChan))
 	C.free(unsafe.Pointer(cQuery))
 	if listenerHandle == 0 {
@@ -288,16 +288,17 @@ func getTestEventHandle() (EventHandle, error) {
    Note: handles are only valid within the callback. Don't pass them out. */
 
 //export eventCallbackError
-func eventCallbackError(errCode C.ULONGLONG, logWatcher unsafe.Pointer) {
-	watcher := (*LogEventCallbackWrapper)(logWatcher).callback
+func eventCallbackError(errCode C.ULONGLONG, callbackWrapperKey unsafe.Pointer) {
+	wrapper := getWrapper(uint32(uintptr(callbackWrapperKey)))
+	watcher := wrapper.callback
 	// The provided errCode can be looked up in the Microsoft System Error Code table:
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/ms681382(v=vs.85).aspx
 	watcher.PublishError(fmt.Errorf("Event log callback got error code: %v", errCode))
 }
 
 //export eventCallback
-func eventCallback(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
-	wrapper := (*LogEventCallbackWrapper)(logWatcher)
+func eventCallback(handle C.ULONGLONG, callbackWrapperKey unsafe.Pointer) {
+	wrapper := getWrapper(uint32(uintptr(callbackWrapperKey)))
 	watcher := wrapper.callback
 	watcher.PublishEvent(EventHandle(handle), wrapper.subscribedChannel)
 }

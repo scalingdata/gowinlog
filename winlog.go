@@ -4,6 +4,7 @@ package winlog
 
 import (
 	"fmt"
+	"sync"
 	"time"
 	"unsafe"
 )
@@ -87,6 +88,31 @@ func (self *WinLogWatcher) SubscribeFromNow(channel, query string) error {
 	return self.subscribeWithoutBookmark(channel, query, EvtSubscribeToFutureEvents)
 }
 
+type w struct {
+	sync.RWMutex
+	CurKey uint32
+	W      map[uint32]*LogEventCallbackWrapper
+}
+
+var wrappers = w{W: make(map[uint32]*LogEventCallbackWrapper)}
+
+func getWrapper(key uint32) *LogEventCallbackWrapper {
+	wrappers.RLock()
+	wrapper := wrappers.W[key]
+	wrappers.RUnlock()
+	return wrapper
+}
+
+func newEventCallbackWrapper(watcher *WinLogWatcher, channel string) (wrapperKey uint32, wrapperPointer *LogEventCallbackWrapper) {
+	wrappers.Lock()
+	key := wrappers.CurKey
+	wrappers.CurKey += 1
+	newWrapper := LogEventCallbackWrapper{callback: watcher, subscribedChannel: channel}
+	wrappers.W[key] = &newWrapper
+	wrappers.Unlock()
+	return key, &newWrapper
+}
+
 func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags EVT_SUBSCRIBE_FLAGS) error {
 	self.watchMutex.Lock()
 	defer self.watchMutex.Unlock()
@@ -97,16 +123,17 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags
 	if err != nil {
 		return fmt.Errorf("Failed to create new bookmark handle: %v", err)
 	}
-	callback := &LogEventCallbackWrapper{callback: self, subscribedChannel: channel}
-	subscription, err := CreateListener(channel, query, flags, callback)
+	wrapperKey, wrapperPointer := newEventCallbackWrapper(self, channel)
+	subscription, err := CreateListener(channel, query, flags, wrapperKey)
 	if err != nil {
 		CloseEventHandle(uint64(newBookmark))
 		return err
 	}
 	self.watches[channel] = &channelWatcher{
-		bookmark:     newBookmark,
-		subscription: subscription,
-		callback:     callback,
+		wrapperKey:      wrapperKey,
+		bookmark:        newBookmark,
+		subscription:    subscription,
+		callbackWrapper: wrapperPointer,
 	}
 	return nil
 }
@@ -121,20 +148,21 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel, query string, xmlStrin
 	if _, ok := self.watches[channel]; ok {
 		return fmt.Errorf("A watcher for channel %q already exists", channel)
 	}
-	callback := &LogEventCallbackWrapper{callback: self, subscribedChannel: channel}
+	wrapperKey, wrapperPointer := newEventCallbackWrapper(self, channel)
 	bookmark, err := CreateBookmarkFromXml(xmlString)
 	if err != nil {
 		return fmt.Errorf("Failed to create new bookmark handle: %v", err)
 	}
-	subscription, err := CreateListenerFromBookmark(channel, query, callback, bookmark)
+	subscription, err := CreateListenerFromBookmark(channel, query, wrapperKey, bookmark)
 	if err != nil {
 		CloseEventHandle(uint64(bookmark))
 		return fmt.Errorf("Failed to add listener: %v", err)
 	}
 	self.watches[channel] = &channelWatcher{
-		bookmark:     bookmark,
-		subscription: subscription,
-		callback:     callback,
+		wrapperKey:      wrapperKey,
+		bookmark:        bookmark,
+		subscription:    subscription,
+		callbackWrapper: wrapperPointer,
 	}
 	return nil
 }
@@ -149,6 +177,9 @@ func (self *WinLogWatcher) removeSubscription(channel string, watch *channelWatc
 	if cancelErr != nil {
 		return cancelErr
 	}
+	wrappers.Lock()
+	delete(wrappers.W, watch.wrapperKey)
+	wrappers.Unlock()
 	return closeErr
 }
 
