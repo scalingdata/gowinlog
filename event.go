@@ -263,16 +263,16 @@ func CloseEventHandle(handle uint64) error {
 	return nil
 }
 
+func Free(ptr unsafe.Pointer) {
+	C.free(ptr)
+}
+
 // Cancel pending actions on the event handle.
 func CancelEventHandle(handle uint64) error {
 	if C.CancelEvtHandle(C.ULONGLONG(handle)) != 1 {
 		return GetLastError()
 	}
 	return nil
-}
-
-func Free(ptr unsafe.Pointer) {
-	C.free(ptr)
 }
 
 /* Get the first event in the log, for testing */
@@ -289,9 +289,9 @@ func getTestEventHandle() (EventHandle, error) {
 
 //export eventCallbackError
 func eventCallbackError(errCode C.ULONGLONG, logWatcher unsafe.Pointer) {
-	WrappersMutex.Lock()
-	wrapper := Wrappers[(*C.int)(logWatcher)]
-	WrappersMutex.Unlock()
+	wrappersMutex.Lock()
+	wrapper := wrappers[(*C.int)(logWatcher)]
+	wrappersMutex.Unlock()
 	watcher := wrapper.callback
 	// The provided errCode can be looked up in the Microsoft System Error Code table:
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/ms681382(v=vs.85).aspx
@@ -301,9 +301,9 @@ func eventCallbackError(errCode C.ULONGLONG, logWatcher unsafe.Pointer) {
 //export eventCallback
 func eventCallback(handle C.ULONGLONG, logWatcher unsafe.Pointer) {
 	fmt.Printf("logWatcher from CallBack = %#v\n", logWatcher)
-	WrappersMutex.Lock()
-	wrapper := Wrappers[(*C.int)(logWatcher)]
-	WrappersMutex.Unlock()
+	wrappersMutex.Lock()
+	wrapper := wrappers[(*C.int)(logWatcher)]
+	wrappersMutex.Unlock()
 	watcher := wrapper.callback
 	watcher.PublishEvent(EventHandle(handle), wrapper.subscribedChannel)
 }

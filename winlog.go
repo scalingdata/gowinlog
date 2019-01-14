@@ -89,15 +89,14 @@ func (self *WinLogWatcher) SubscribeFromNow(channel, query string) error {
 	return self.subscribeWithoutBookmark(channel, query, EvtSubscribeToFutureEvents)
 }
 
-var Wrappers = make(map[*C.int]*LogEventCallbackWrapper)
-var WrappersMutex = &sync.RWMutex{}
+var wrappers = make(map[*C.int]*LogEventCallbackWrapper)
+var wrappersMutex = &sync.RWMutex{}
 
 func newEventCallbackWrapper(watcher *WinLogWatcher, channel string) *C.int {
 	cKey := C.int(0)
-	WrappersMutex.Lock()
-	Wrappers[&cKey] = &LogEventCallbackWrapper{callback: watcher, subscribedChannel: channel}
-	WrappersMutex.Unlock()
-	fmt.Printf("create wrapper = %#v\n", &cKey)
+	wrappersMutex.Lock()
+	wrappers[&cKey] = &LogEventCallbackWrapper{callback: watcher, subscribedChannel: channel}
+	wrappersMutex.Unlock()
 	return &cKey
 }
 func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags EVT_SUBSCRIBE_FLAGS) error {
@@ -116,13 +115,14 @@ func (self *WinLogWatcher) subscribeWithoutBookmark(channel, query string, flags
 		CloseEventHandle(uint64(newBookmark))
 		return err
 	}
-	WrappersMutex.Lock()
+	wrappersMutex.Lock()
 	self.watches[channel] = &channelWatcher{
-		bookmark:     newBookmark,
-		subscription: subscription,
-		callback: Wrappers[callback],
+		wrapperPointer: callback,
+		bookmark:       newBookmark,
+		subscription:   subscription,
+		callback:       wrappers[callback],
 	}
-	WrappersMutex.Unlock()
+	wrappersMutex.Unlock()
 	return nil
 }
 
@@ -146,13 +146,14 @@ func (self *WinLogWatcher) SubscribeFromBookmark(channel, query string, xmlStrin
 		CloseEventHandle(uint64(bookmark))
 		return fmt.Errorf("Failed to add listener: %v", err)
 	}
-	WrappersMutex.Lock()
+	wrappersMutex.Lock()
 	self.watches[channel] = &channelWatcher{
-		bookmark:     bookmark,
-		subscription: subscription,
-		callback:     Wrappers[callback],
+		wrapperPointer: callback,
+		bookmark:       bookmark,
+		subscription:   subscription,
+		callback:       wrappers[callback],
 	}
-	WrappersMutex.Unlock()
+	wrappersMutex.Unlock()
 	return nil
 }
 
@@ -166,6 +167,9 @@ func (self *WinLogWatcher) removeSubscription(channel string, watch *channelWatc
 	if cancelErr != nil {
 		return cancelErr
 	}
+	wrappersMutex.Lock()
+	delete(wrappers, watch.wrapperPointer)
+	wrappersMutex.Unlock()
 	return closeErr
 }
 

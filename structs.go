@@ -1,5 +1,6 @@
 package winlog
 
+import "C"
 import (
 	"sync"
 	"time"
@@ -49,9 +50,10 @@ type WinLogEvent struct {
 }
 
 type channelWatcher struct {
-	subscription ListenerHandle
-	callback     *LogEventCallbackWrapper
-	bookmark     BookmarkHandle
+	wrapperPointer *C.int
+	subscription   ListenerHandle
+	callback       *LogEventCallbackWrapper
+	bookmark       BookmarkHandle
 }
 
 // Watches one or more event log channels
