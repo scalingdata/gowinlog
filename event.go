@@ -4,14 +4,24 @@ package winlog
 
 /*
 #cgo LDFLAGS: -l wevtapi
+// Set windows version to winVista - minimal required for used event log API.
+// (Some of mingw installations uses too old windows headers which prevents us
+// from using that API) Looks like for cgo that declaration affetcs only
+// current file, so for more modern API just create a new file and define
+// necessary minimal version.
+#define _WIN32_WINNT 0x0600
 #include "event.h"
+#include "winevt.h"
 */
 import "C"
 import (
 	"errors"
 	"fmt"
+	"syscall"
 	"time"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 type EVT_SUBSCRIBE_FLAGS int
@@ -91,6 +101,61 @@ const (
 	EvtFormatMessageId
 	EvtFormatMessageXml
 )
+
+// Structure for channel setting.
+type ChannelConfig struct {
+	handle C.EVT_HANDLE
+}
+
+// `NewChannelConfig` creates `ChannelConfig`
+func NewChannelConfig(channelName string) (*ChannelConfig, error) {
+	wChannelName, err := syscall.UTF16FromString(channelName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to conver string to utf16; %v", err)
+	}
+	hChannel := C.EvtOpenChannelConfig(nil, (*C.wchar_t)(&wChannelName[0]), 0)
+	if hChannel == nil {
+		err := windows.GetLastError()
+		return nil, fmt.Errorf("falied to open channel config; %v", err)
+	}
+	return &ChannelConfig{
+		handle: hChannel,
+	}, nil
+}
+
+// `Save` saves config.
+func (c *ChannelConfig) Save() error {
+	if res := C.EvtSaveChannelConfig(c.handle, 0); res == 0 {
+		err := windows.GetLastError()
+		return fmt.Errorf("failed to save config; %v", err)
+	}
+	return nil
+}
+
+// `EnableChannel` enables event logging for channel.
+func (c *ChannelConfig) EnableChannel(status bool) error {
+	if res := C.EnableChannel(c.handle, C.int(btoi(status))); res != 0 {
+		err := windows.GetLastError()
+		return fmt.Errorf("failed to change channel enable status; %v", err)
+	}
+	return nil
+}
+
+func btoi(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// `SetBufferSizeB` sets log buffer size.
+func (c *ChannelConfig) SetBufferSize(bufferSizeB int) error {
+	if res := C.SetBufferSizeB(c.handle, C.int(bufferSizeB)); res != 0 {
+		err := windows.GetLastError()
+		return fmt.Errorf("failed to change channel buffer size; %v", err)
+	}
+	return nil
+}
 
 // Get a handle to a render context which will render properties from the System element.
 // Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting

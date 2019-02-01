@@ -1,4 +1,9 @@
-#define _WIN32_WINNT 0x0602
+// Set windows version to winVista - minimal required for used event log API.
+// (Some of mingw installations uses too old windows headers which prevents us
+// from using that API) Looks like for cgo that declaration affetcs only
+// current file, so for more modern API just create a new file and define
+// necessary minimal version.
+#define _WIN32_WINNT 0x0600
 
 #include <windows.h>
 #include "winevt.h"
