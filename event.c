@@ -6,7 +6,12 @@
 // where they are called twice - once to determine the necessary buffer size,
 // and once to copy values into the supplied buffer.
 
-#define _WIN32_WINNT 0x0602
+// Set windows version to winVista - minimal required for used event log API.
+// (Some of mingw installations uses too old windows headers which prevents us
+// from using that API) Looks like for cgo that declaration affetcs only
+// current file, so for more modern API just create a new file and define
+// necessary minimal version.
+#define _WIN32_WINNT 0x0600
 
 #include "event.h"
 #include "_cgo_export.h"
@@ -232,6 +237,32 @@ ULONGLONG CreateListener(char* channel, char* query, int startPos, PVOID pWatche
 
 ULONGLONG CreateListenerFromBookmark(char* channel, char* query, PVOID pWatcher, ULONGLONG hBookmark) {
 	return SetupListener(channel, query, pWatcher, (EVT_HANDLE)hBookmark, EvtSubscribeStartAfterBookmark);
+}
+
+int EnableChannel(EVT_HANDLE hChannel, int status) {
+    EVT_VARIANT ChannelProperty = {0};
+
+    // Set status `Enable`
+    ChannelProperty.Type = EvtVarTypeBoolean;
+    ChannelProperty.BooleanVal = status == 0 ? FALSE : TRUE;
+    if  (!EvtSetChannelConfigProperty((EVT_HANDLE)hChannel, EvtChannelConfigEnabled, 0, &ChannelProperty)) {
+       return 1;
+    }
+
+    return 0;
+}
+
+int SetBufferSizeB(EVT_HANDLE hChannel, int bufferSizeB) {
+    EVT_VARIANT ChannelProperty = {0};
+    
+    // Set buffer size.
+    ChannelProperty.Type = EvtVarTypeUInt64;
+    ChannelProperty.UInt64Val = bufferSizeB;
+    if  (!EvtSetChannelConfigProperty(hChannel, EvtChannelLoggingConfigMaxSize, 0, &ChannelProperty)) {
+        return 1;
+    }
+
+    return 0;
 }
 
 ULONGLONG GetTestEventHandle() {

@@ -69,5 +69,11 @@ int CancelEvtHandle(ULONGLONG hEvent);
 // EvtSystem*
 ULONGLONG CreateSystemRenderContext();
 
+// EnableChannel enables event logging for channel.
+int EnableChannel(EVT_HANDLE hChannel, int status);
+
+// SetBufferSizeB sets log buffer size.
+int SetBufferSizeB(EVT_HANDLE hChannel, int bufferSizeMb);
+
 // For testing, get a handle on the first event in the log
 ULONGLONG GetTestEventHandle();
