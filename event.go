@@ -224,8 +224,10 @@ func RenderFileTimeField(fields RenderedFields, fieldIndex EVT_SYSTEM_PROPERTY_I
 	if fieldType != EvtVarTypeFileTime {
 		return time.Time{}, false
 	}
-	field := C.GetRenderedFileTimeValue(C.PVOID(fields), C.int(fieldIndex))
-	return time.Unix(int64(field), 0), true
+	stamp := uint64(C.GetRenderedFileTimeValue(C.PVOID(fields), C.int(fieldIndex)))
+	stamp -= 116444736000000000
+	stamp *= 100
+	return time.Unix(0, int64(stamp)).UTC(), true
 }
 
 // Get the unsigned integer at the given index. Returns false if the field
