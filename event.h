@@ -47,7 +47,8 @@ ULONGLONG GetRenderedUInt32Value(PVOID pRenderedValues, int property);
 ULONGLONG GetRenderedUInt64Value(PVOID pRenderedValues, int property);
 // Returns a pointer to a string that must be freed by the caller
 char* GetRenderedStringValue(PVOID pRenderedValues, int property);
-// Returns a unix epoch timestamp in milliseconds, not a FileTime
+// Returns a windows timestamp. Windows timestamp represents a number
+// of 100-nanosecond intervals since January 1, 1601.
 ULONGLONG GetRenderedFileTimeValue(PVOID pRenderedValues, int property);
 
 // Format the event into a string using details from the event publisher. 

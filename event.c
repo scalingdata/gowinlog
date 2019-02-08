@@ -173,10 +173,10 @@ LONGLONG GetRenderedInt64Value(PVOID pRenderedValues, int property) {
 
 //FILETIME to unix epoch: https://support.microsoft.com/en-us/kb/167296
 ULONGLONG GetRenderedFileTimeValue(PVOID pRenderedValues, int property) {
-	FILETIME* ft = (FILETIME*) &(((PEVT_VARIANT)pRenderedValues)[property].FileTimeVal); 
-	ULONGLONG time = ft->dwHighDateTime;
-	time = (time << 32) | ft->dwLowDateTime;
-	return (time / 10000000) - 11644473600;
+    FILETIME* ft = (FILETIME*) &(((PEVT_VARIANT)pRenderedValues)[property].FileTimeVal);
+    ULONGLONG time = ft->dwHighDateTime;
+    time = (time << 32) | ft->dwLowDateTime;
+    return time;
 }
 
 // Dispatch events and errors appropriately
