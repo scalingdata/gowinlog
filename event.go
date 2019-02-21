@@ -9,6 +9,7 @@ package winlog
 // from using that API) Looks like for cgo that declaration affetcs only
 // current file, so for more modern API just create a new file and define
 // necessary minimal version.
+#undef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600
 #include "event.h"
 #include "winevt.h"
