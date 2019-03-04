@@ -249,8 +249,33 @@ int EnableChannel(EVT_HANDLE hChannel, int status) {
     if  (!EvtSetChannelConfigProperty((EVT_HANDLE)hChannel, EvtChannelConfigEnabled, 0, &ChannelProperty)) {
        return 1;
     }
-
     return 0;
+}
+
+int GetBufferSizeB(EVT_HANDLE hChannel, ULONGLONG* res) {
+    PEVT_VARIANT pProperty = NULL;  // Buffer that receives the property value
+    DWORD dwBufferUsed = 0;
+    DWORD dwBufferSize = 0;
+    int status = ERROR_SUCCESS;
+
+    // First `EvtGetChannelConfigProperty` call fot ask `EvtChannelLoggingConfigMaxSize` property size.
+    EvtGetChannelConfigProperty(hChannel, EvtChannelLoggingConfigMaxSize, 0, dwBufferSize, NULL, &dwBufferUsed);
+    status = GetLastError();
+    if (ERROR_INSUFFICIENT_BUFFER == status) {
+        dwBufferSize = dwBufferUsed;
+        pProperty = malloc(dwBufferSize);
+        if (pProperty) {
+            EvtGetChannelConfigProperty(hChannel, EvtChannelLoggingConfigMaxSize, 0, dwBufferSize, pProperty, &dwBufferUsed);
+            *res = pProperty->UInt64Val;
+            free(pProperty);
+            status = ERROR_SUCCESS;
+        }
+        else {
+            status = ERROR_OUTOFMEMORY;
+            SetLastError(status);
+        }
+    }
+    return status;
 }
 
 int SetBufferSizeB(EVT_HANDLE hChannel, int bufferSizeB) {

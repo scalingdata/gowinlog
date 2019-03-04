@@ -149,6 +149,16 @@ func btoi(b bool) int {
 	return 0
 }
 
+func (c *ChannelConfig) GetBufferSize() (uint64, error) {
+	var res C.ULONGLONG
+	err := C.GetBufferSizeB(c.handle, &res)
+	if err != 0 {
+		errType := windows.GetLastError()
+		return 0, fmt.Errorf("failed to get channel buffer size; %v", errType)
+	}
+	return uint64(res), nil
+}
+
 // `SetBufferSizeB` sets log buffer size.
 func (c *ChannelConfig) SetBufferSize(bufferSizeB int) error {
 	if res := C.SetBufferSizeB(c.handle, C.int(bufferSizeB)); res != 0 {
