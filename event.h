@@ -73,6 +73,10 @@ ULONGLONG CreateSystemRenderContext();
 // EnableChannel enables event logging for channel.
 int EnableChannel(EVT_HANDLE hChannel, int status);
 
+// `GetBufferSize` sets log buffer size to `res`.
+// On success returns 0, on error return 1.
+int GetBufferSizeB(EVT_HANDLE hChannel, ULONGLONG* res);
+
 // SetBufferSizeB sets log buffer size.
 int SetBufferSizeB(EVT_HANDLE hChannel, int bufferSizeMb);
 
